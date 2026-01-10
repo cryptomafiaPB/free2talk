@@ -1,10 +1,21 @@
 import { Router } from 'express';
+import {
+    getUserProfile,
+    listUsers,
+    updateUserProfile,
+    deleteUser
+} from '../controllers/user.controller';
 
 export const userRouter = Router();
 
-// TODO: Implement user routes
-// GET /users/:id - Get user profile
+// List all users (public info)
+userRouter.get('/', listUsers);
 
-userRouter.get('/:id', (req, res) => {
-    res.status(501).json({ message: 'Not implemented yet' });
-});
+// Get user profile by ID
+userRouter.get('/:id', getUserProfile);
+
+// Update user profile (self only)
+userRouter.put('/:id', updateUserProfile);
+
+// Delete user (self only)
+userRouter.delete('/:id', deleteUser);

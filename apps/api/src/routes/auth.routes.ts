@@ -1,30 +1,14 @@
 import { Router } from 'express';
+import { getMeController, loginController, logoutController, refreshTokenController, registerController } from '../controllers/auth.controller';
 
 export const authRouter = Router();
 
-// TODO: Implement auth routes
-// POST /register
-// POST /login
-// POST /logout
-// POST /refresh
-// GET /me
 
-authRouter.post('/register', (req, res) => {
-    res.status(501).json({ message: 'Not implemented yet' });
-});
+authRouter.post('/register', registerController);
 
-authRouter.post('/login', (req, res) => {
-    res.status(501).json({ message: 'Not implemented yet' });
-});
+authRouter.post('/login', loginController);
 
-authRouter.post('/logout', (req, res) => {
-    res.status(501).json({ message: 'Not implemented yet' });
-});
+authRouter.post('/logout', logoutController);
+authRouter.post('/refresh', refreshTokenController);
 
-authRouter.post('/refresh', (req, res) => {
-    res.status(501).json({ message: 'Not implemented yet' });
-});
-
-authRouter.get('/me', (req, res) => {
-    res.status(501).json({ message: 'Not implemented yet' });
-});
+authRouter.get('/me', getMeController);

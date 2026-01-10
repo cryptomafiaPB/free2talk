@@ -7,6 +7,7 @@ import { userRouter } from './routes/user.routes.js';
 import { errorHandler } from './middleware/error.middleware.js';
 import { roomRouter } from './routes/room.routes.js';
 import { voiceRouter } from './routes/voice.routes.js';
+import cookieParser from 'cookie-parser';
 
 export const app = express();
 
@@ -19,6 +20,7 @@ app.use(
     })
 );
 app.use(express.json());
+app.use(cookieParser())
 app.use(morgan('dev'));
 
 // Health check
