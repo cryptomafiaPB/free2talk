@@ -4,6 +4,7 @@ import { AppError } from '../utils/app-error.js';
 import * as roomService from '../services/room.service.js';
 import { z } from 'zod';
 import { paginationSchema, updateRoomSchema } from '../utils/validation.js';
+import { getSocketInstance } from '../socket/socket-instance.js';
 
 //  * GET /rooms
 //  * List all active rooms with pagination
@@ -78,6 +79,21 @@ export async function createRoom(req: Request, res: Response, next: NextFunction
 
         const room = await roomService.createRoom(userId, validatedData);
 
+        // Broadcast to hallway
+        const io = getSocketInstance();
+        if (io) {
+            io.to('hallway').emit('hallway:room-created', {
+                id: room.id,
+                name: room.name,
+                topic: room.topic || undefined,
+                languages: room.languages || [],
+                participantCount: room.participantCount,
+                maxParticipants: room.maxParticipants,
+                ownerId: room.ownerId,
+                ownerName: room.owner.username,
+            });
+        }
+
         res.status(201).json({
             success: true,
             data: room,
@@ -108,6 +124,21 @@ export async function updateRoom(req: Request, res: Response, next: NextFunction
 
         const room = await roomService.updateRoom(id, userId, validatedData);
 
+        // Broadcast to hallway
+        const io = getSocketInstance();
+        if (io) {
+            io.to('hallway').emit('hallway:room-updated', {
+                id: room.id,
+                name: room.name,
+                topic: room.topic || undefined,
+                languages: room.languages || [],
+                participantCount: room.participantCount,
+                maxParticipants: room.maxParticipants,
+                ownerId: room.ownerId,
+                ownerName: room.owner.username,
+            });
+        }
+
         res.json({
             success: true,
             data: room,
@@ -130,6 +161,21 @@ export async function joinRoom(req: Request, res: Response, next: NextFunction) 
         }
 
         const result = await roomService.joinRoom(id, userId);
+
+        // Broadcast updated participant count to hallway
+        const io = getSocketInstance();
+        if (io) {
+            io.to('hallway').emit('hallway:room-updated', {
+                id: result.room.id,
+                name: result.room.name,
+                topic: result.room.topic || undefined,
+                languages: result.room.languages || [],
+                participantCount: result.room.participantCount,
+                maxParticipants: result.room.maxParticipants,
+                ownerId: result.room.ownerId,
+                ownerName: result.room.owner.username,
+            });
+        }
 
         res.json({
             success: true,
@@ -179,6 +225,13 @@ export async function closeRoom(req: Request, res: Response, next: NextFunction)
 
         await roomService.closeRoom(id, userId);
 
+        // Broadcast room closed to hallway
+        const io = getSocketInstance();
+        if (io) {
+            io.to('hallway').emit('hallway:room-closed', id);
+            io.to(`room:${id}`).emit('room:closed', 'Room closed by owner');
+        }
+
         res.json({
             success: true,
             message: 'Room closed successfully',
@@ -202,6 +255,12 @@ export async function kickUser(req: Request, res: Response, next: NextFunction) 
 
         await roomService.kickUser(roomId, ownerId, targetUserId);
 
+        // Broadcast kick event
+        const io = getSocketInstance();
+        if (io) {
+            io.to(`room:${roomId}`).emit('room:user-kicked', targetUserId);
+        }
+
         res.json({
             success: true,
             message: 'User kicked successfully',
@@ -224,6 +283,12 @@ export async function transferOwnership(req: Request, res: Response, next: NextF
         }
 
         await roomService.transferOwnership(roomId, currentOwnerId, newOwnerId);
+
+        // Broadcast ownership change
+        const io = getSocketInstance();
+        if (io) {
+            io.to(`room:${roomId}`).emit('room:owner-changed', newOwnerId);
+        }
 
         res.json({
             success: true,

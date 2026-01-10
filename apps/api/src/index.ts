@@ -4,6 +4,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { initSocketHandlers } from './socket/index.js';
 import { initMediasoupWorkers } from './socket/mediasoup/workers.js';
+import { setSocketInstance } from './socket/socket-instance.js';
 
 const PORT = process.env.PORT || 3001;
 
@@ -23,6 +24,9 @@ async function start() {
     try {
         await initMediasoupWorkers();
         console.log('✓ mediasoup workers initialized');
+
+        // Set socket instance for global access
+        setSocketInstance(io);
 
         // Initialize socket handlers
         initSocketHandlers(io);

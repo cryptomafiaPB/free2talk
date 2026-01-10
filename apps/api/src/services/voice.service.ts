@@ -20,6 +20,7 @@ const mediaCodecs: mediasoup.types.RtpCodecCapability[] = [
         mimeType: 'audio/opus',
         clockRate: 48000,
         channels: 2,
+        preferredPayloadType: 111,
         parameters: {
             usedtx: 1, // Discontinuous transmission for bandwidth saving
             'sprop-stereo': 1,
@@ -58,9 +59,9 @@ interface ParticipantState {
 // Room storage
 const rooms = new Map<string, RoomState>();
 
-/**
- * Create or get a router for a room
- */
+
+//  * Create or get a router for a room
+
 export async function getOrCreateRouter(roomId: string): Promise<Router> {
     let room = rooms.get(roomId);
 
@@ -88,16 +89,15 @@ export async function getOrCreateRouter(roomId: string): Promise<Router> {
     return room.router;
 }
 
-/**
- * Get room state
- */
+
+//  * Get room state
+
 export function getRoomState(roomId: string): RoomState | undefined {
     return rooms.get(roomId);
 }
 
-/**
- * Get or create participant state
- */
+//  * Get or create participant state
+
 export function getOrCreateParticipant(roomId: string, userId: string): ParticipantState {
     const room = rooms.get(roomId);
     if (!room) {
@@ -119,17 +119,16 @@ export function getOrCreateParticipant(roomId: string, userId: string): Particip
     return participant;
 }
 
-/**
- * Get RTP capabilities for the room router
- */
+//  * Get RTP capabilities for the room router
+
 export async function getRtpCapabilities(roomId: string): Promise<RtpCapabilities> {
     const router = await getOrCreateRouter(roomId);
     return router.rtpCapabilities;
 }
 
-/**
- * Create a WebRTC transport for a participant
- */
+
+//  * Create a WebRTC transport for a participant
+
 export async function createTransport(
     roomId: string,
     userId: string,
@@ -170,9 +169,9 @@ export async function createTransport(
     };
 }
 
-/**
- * Connect a transport with DTLS parameters
- */
+
+// * Connect a transport with DTLS parameters
+
 export async function connectTransport(
     roomId: string,
     userId: string,
@@ -197,9 +196,9 @@ export async function connectTransport(
     console.log(`Connected transport ${transportId} for user ${userId}`);
 }
 
-/**
- * Create a producer (user starts sending audio)
- */
+
+//  * Create a producer (user starts sending audio)
+
 export async function produce(
     roomId: string,
     userId: string,
@@ -240,9 +239,9 @@ export async function produce(
     return producer.id;
 }
 
-/**
- * Create a consumer (user receives audio from another user)
- */
+
+//  * Create a consumer (user receives audio from another user)
+
 export async function consume(
     roomId: string,
     userId: string,
@@ -300,9 +299,9 @@ export async function consume(
     };
 }
 
-/**
- * Pause/resume producer (mute/unmute)
- */
+
+//  * Pause/resume producer (mute/unmute)
+
 export async function setProducerPaused(
     roomId: string,
     userId: string,
@@ -323,9 +322,9 @@ export async function setProducerPaused(
     console.log(`Producer ${participant.producer.id} ${paused ? 'paused' : 'resumed'}`);
 }
 
-/**
- * Get all producers in a room except the given user
- */
+
+//  * Get all producers in a room except the given user
+
 export function getOtherProducers(roomId: string, userId: string): Array<{ userId: string; producerId: string }> {
     const room = rooms.get(roomId);
     if (!room) {
@@ -346,16 +345,15 @@ export function getOtherProducers(roomId: string, userId: string): Array<{ userI
     return producers;
 }
 
-/**
- * Get AudioLevelObserver for a room (for speaking detection)
- */
+
+//  * Get AudioLevelObserver for a room (for speaking detection)
+
 export function getAudioLevelObserver(roomId: string): AudioLevelObserver | undefined {
     return rooms.get(roomId)?.audioLevelObserver;
 }
 
-/**
- * Clean up participant resources
- */
+//  * Clean up participant resources
+
 export async function cleanupParticipant(roomId: string, userId: string): Promise<void> {
     const room = rooms.get(roomId);
     if (!room) {
@@ -401,9 +399,9 @@ export async function cleanupParticipant(roomId: string, userId: string): Promis
     }
 }
 
-/**
- * Clean up entire room
- */
+
+//  * Clean up entire room
+
 export async function cleanupRoom(roomId: string): Promise<void> {
     const room = rooms.get(roomId);
     if (!room) {
@@ -424,16 +422,16 @@ export async function cleanupRoom(roomId: string): Promise<void> {
     console.log(`Cleaned up room ${roomId}`);
 }
 
-/**
- * Get all active rooms
- */
+
+//  * Get all active rooms
+
 export function getActiveRooms(): string[] {
     return Array.from(rooms.keys());
 }
 
-/**
- * Get participant count in a room
- */
+
+//  * Get participant count in a room
+
 export function getParticipantCount(roomId: string): number {
     const room = rooms.get(roomId);
     return room ? room.participants.size : 0;
