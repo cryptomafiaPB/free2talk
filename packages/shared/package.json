@@ -1,0 +1,19 @@
+{
+    "name": "@free2talk/shared",
+    "version": "0.1.0",
+    "private": true,
+    "main": "./src/index.ts",
+    "types": "./src/index.ts",
+    "scripts": {
+        "lint": "eslint .",
+        "clean": "rm -rf dist"
+    },
+    "dependencies": {
+        "zod": "^3.24.1",
+        "mediasoup": "^3.15.5"
+    },
+    "devDependencies": {
+        "@types/node": "^22.10.2",
+        "typescript": "^5.7.2"
+    }
+}

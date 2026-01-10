@@ -1,0 +1,29 @@
+{
+    "name": "free2talk",
+    "version": "0.1.0",
+    "private": true,
+    "workspaces": [
+        "apps/*",
+        "packages/*"
+    ],
+    "scripts": {
+        "dev": "turbo run dev",
+        "build": "turbo run build",
+        "start": "turbo run start",
+        "lint": "turbo run lint",
+        "clean": "turbo run clean",
+        "db:generate": "cd apps/api && pnpm db:generate",
+        "db:migrate": "cd apps/api && pnpm db:migrate",
+        "db:studio": "cd apps/api && pnpm db:studio",
+        "db:push": "cd apps/api && pnpm db:push"
+    },
+    "devDependencies": {
+        "turbo": "^2.3.0",
+        "typescript": "^5.7.2"
+    },
+    "engines": {
+        "node": ">=20.0.0",
+        "pnpm": ">=9.0.0"
+    },
+    "packageManager": "pnpm@9.15.0"
+}
