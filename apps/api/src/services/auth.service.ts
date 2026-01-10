@@ -5,6 +5,8 @@ import { users } from "../db/schema";
 import { hashPassword, verifyPassword } from "../utils/password";
 import { generateTokenPair, TokenPair, TokenPayload, verifyRefreshToken } from "../utils/JWT";
 import { AppError } from "../utils/app-error";
+import { SessionCache, UserCache } from './cache.service';
+import { CACHE_TTL } from "../db/redis";
 
 
 export async function registerService(data: ReturnType<typeof registerSchema.safeParse>) {
@@ -42,10 +44,16 @@ export async function registerService(data: ReturnType<typeof registerSchema.saf
 
         const tokens = generateTokenPair(tokenPayload);
 
+        // Store refresh token in Redis
+        await SessionCache.storeRefreshToken(user.id, tokens.refreshToken, CACHE_TTL.SESSION);
+
         // Update online status
         await db.update(users)
             .set({ isOnline: true })
             .where(eq(users.id, user.id));
+
+        // Set online in Redis
+        await UserCache.setOnline(user.id);
 
         return {
             user: {
@@ -93,10 +101,16 @@ export async function loginService(data: ReturnType<typeof loginSchema.safeParse
 
         const tokens: TokenPair = generateTokenPair(tokenPayload);
 
+        // Store refresh token in Redis
+        await SessionCache.storeRefreshToken(user.id, tokens.refreshToken, CACHE_TTL.SESSION);
+
         // Update online status
         await db.update(users)
             .set({ isOnline: true })
             .where(eq(users.id, user.id));
+
+        // Set online in Redis
+        await UserCache.setOnline(user.id);
 
 
         return {
@@ -122,23 +136,44 @@ export async function refreshTokenService(refreshToken: string) {
     const payload = verifyRefreshToken(refreshToken);
 
     if (!payload) {
-        throw new Error('Invalid refresh token');
+        throw new AppError('Invalid refresh token', 401);
     }
 
-    // Generate new token pair [web:34]
+    // Check if refresh token exists in Redis
+    const storedToken = await SessionCache.getRefreshToken(refreshToken);
+
+    if (!storedToken) {
+        throw new AppError('Refresh token revoked or expired', 401);
+    }
+
+    // Delete old refresh token (by token, not userId)
+    await SessionCache.deleteRefreshToken(refreshToken);
+
+    // Generate new token pair
     const newTokens = generateTokenPair({
         userId: payload.userId,
         email: payload.email,
         username: payload.username
     });
 
+    // Store new refresh token in Redis
+    await SessionCache.storeRefreshToken(payload.userId, newTokens.refreshToken, CACHE_TTL.SESSION);
 
     return newTokens;
 }
 
 export async function logoutService(userId: string) {
     try {
-        // Update online status
+        // Delete refresh token from Redis by userId
+        await SessionCache.deleteRefreshTokenByUserId(userId);
+
+        // Set offline in Redis
+        await UserCache.setOffline(userId);
+
+        // Invalidate user cache
+        await UserCache.invalidateUser(userId);
+
+        // Update online status in DB
         await db.update(users)
             .set({ isOnline: false })
             .where(eq(users.id, userId));

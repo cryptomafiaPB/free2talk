@@ -8,6 +8,7 @@ import { errorHandler } from './middleware/error.middleware.js';
 import { roomRouter } from './routes/room.routes.js';
 import { voiceRouter } from './routes/voice.routes.js';
 import cookieParser from 'cookie-parser';
+import { apiRateLimiter } from './middleware/rate-limiter.middleware.js';
 
 export const app = express();
 
@@ -22,6 +23,9 @@ app.use(
 app.use(express.json());
 app.use(cookieParser())
 app.use(morgan('dev'));
+
+// Apply general rate limiting to all API routes
+app.use('/api', apiRateLimiter);
 
 // Health check
 app.get('/health', (req, res) => {

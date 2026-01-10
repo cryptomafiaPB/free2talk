@@ -4,6 +4,7 @@ import { eq, and, isNull, desc, sql, count } from 'drizzle-orm';
 import { AppError } from '../utils/app-error.js';
 import type { CreateRoomInput } from '@free2talk/shared';
 import { ParticipantInfo, RoomWithParticipants } from '../utils/types.js';
+import { RoomCache, UserCache } from './cache.service.js';
 
 
 // Helper: Generate a URL-friendly slug from room name
@@ -26,6 +27,12 @@ export async function listActiveRooms(
     limit = 20,
     language?: string
 ): Promise<{ rooms: RoomWithParticipants[]; total: number; page: number; totalPages: number }> {
+    // Check cache first
+    const cached = await RoomCache.getRoomsList(page, limit, language);
+    if (cached) {
+        return cached;
+    }
+
     const offset = (page - 1) * limit;
 
     // Build the query for active rooms
@@ -112,13 +119,24 @@ export async function listActiveRooms(
         },
     }));
 
-    return { rooms: result, total, page, totalPages };
+    const response = { rooms: result, total, page, totalPages };
+
+    // Cache the result
+    await RoomCache.cacheRoomsList(page, limit, language, response);
+
+    return response;
 }
 
 /**
  * Get room by ID or slug with full details
  */
 export async function getRoomById(roomIdOrSlug: string): Promise<RoomWithParticipants> {
+    // Check cache first
+    const cached = await RoomCache.getRoom(roomIdOrSlug);
+    if (cached) {
+        return cached;
+    }
+
     // Try to find by ID first, then by slug
     const roomResult = await db
         .select({
@@ -160,7 +178,7 @@ export async function getRoomById(roomIdOrSlug: string): Promise<RoomWithPartici
             )
         );
 
-    return {
+    const result: RoomWithParticipants = {
         id: room.id,
         name: room.name,
         slug: room.slug,
@@ -179,12 +197,26 @@ export async function getRoomById(roomIdOrSlug: string): Promise<RoomWithPartici
             avatarUrl: room.ownerAvatarUrl,
         },
     };
+
+    // Cache the result
+    await RoomCache.cacheRoom(room.id, result);
+    if (room.slug) {
+        await RoomCache.cacheRoom(room.slug, result);
+    }
+
+    return result;
 }
 
 /**
  * Get all participants in a room
  */
 export async function getRoomParticipants(roomId: string): Promise<ParticipantInfo[]> {
+    // Check cache first
+    const cached = await RoomCache.getParticipants(roomId);
+    if (cached) {
+        return cached;
+    }
+
     const participants = await db
         .select({
             id: roomParticipants.id,
@@ -204,6 +236,9 @@ export async function getRoomParticipants(roomId: string): Promise<ParticipantIn
             )
         )
         .orderBy(roomParticipants.joinedAt);
+
+    // Cache the result
+    await RoomCache.cacheParticipants(roomId, participants);
 
     return participants;
 }
@@ -258,6 +293,11 @@ export async function createRoom(
         userId,
         role: 'owner',
     });
+
+    // Invalidate rooms list cache and add to active rooms
+    await RoomCache.invalidateRoomsList();
+    await RoomCache.addActiveRoom(newRoom.id);
+    await UserCache.cacheUserRoom(userId, newRoom.id);
 
     return {
         id: newRoom.id,
@@ -340,6 +380,10 @@ export async function joinRoom(roomId: string, userId: string): Promise<{ room: 
         })
         .returning();
 
+    // Invalidate caches
+    await RoomCache.invalidateRoom(room.id);
+    await UserCache.cacheUserRoom(userId, room.id);
+
     return {
         room: { ...room, participantCount: room.participantCount + 1 },
         participant: {
@@ -407,6 +451,10 @@ export async function leaveRoom(roomId: string, userId: string): Promise<void> {
         .update(roomParticipants)
         .set({ leftAt: new Date() })
         .where(eq(roomParticipants.id, participant.id));
+
+    // Invalidate caches
+    await RoomCache.invalidateRoom(roomId);
+    await UserCache.cacheUserRoom(userId, null);
 }
 
 /**
@@ -446,6 +494,11 @@ export async function closeRoom(roomId: string, userId: string): Promise<void> {
         .update(rooms)
         .set({ isActive: false, closedAt: new Date() })
         .where(eq(rooms.id, roomId));
+
+    // Invalidate caches
+    await RoomCache.invalidateRoom(roomId);
+    await RoomCache.removeActiveRoom(roomId);
+    await RoomCache.invalidateRoomsList();
 }
 
 /**
@@ -487,6 +540,10 @@ export async function kickUser(roomId: string, ownerId: string, targetUserId: st
         .update(roomParticipants)
         .set({ leftAt: new Date() })
         .where(eq(roomParticipants.id, targetParticipant.id));
+
+    // Invalidate caches
+    await RoomCache.invalidateRoom(roomId);
+    await UserCache.cacheUserRoom(targetUserId, null);
 }
 
 /**
@@ -552,6 +609,9 @@ export async function transferOwnership(
         .update(roomParticipants)
         .set({ role: 'owner' })
         .where(eq(roomParticipants.id, newOwnerParticipant.id));
+
+    // Invalidate cache
+    await RoomCache.invalidateRoom(roomId);
 }
 
 /**
@@ -604,6 +664,10 @@ export async function updateRoom(
         .update(rooms)
         .set(updates)
         .where(eq(rooms.id, roomId));
+
+    // Invalidate cache
+    await RoomCache.invalidateRoom(roomId);
+    await RoomCache.invalidateRoomsList();
 
     return getRoomById(roomId);
 }

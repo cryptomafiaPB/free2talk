@@ -4,17 +4,29 @@ import { eq } from 'drizzle-orm';
 import { NextFunction, Request, Response } from 'express';
 import type { User, UserProfile } from '../../../../packages/shared/src/types/user';
 import { AppError } from '../utils/app-error';
+import { UserCache } from '../services/cache.service';
 
 // Get user profile by ID
 export const getUserProfile = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params;
+
+        // Check cache first
+        const cached = await UserCache.getUser(id);
+        if (cached) {
+            return res.json(cached);
+        }
+
         const user = await db.select().from(users).where(eq(users.id, id)).limit(1);
         if (!user.length) {
             return next(new AppError('User not found', 404));
         }
         // Remove sensitive info
         const { email, passwordHash, ...publicProfile } = user[0];
+
+        // Cache the result
+        await UserCache.cacheUser(id, publicProfile);
+
         res.json(publicProfile);
     } catch (err) {
         next(err);
@@ -48,6 +60,10 @@ export const updateUserProfile = async (req: Request, res: Response, next: NextF
             return next(new AppError('User not found', 404));
         }
         const { email, passwordHash, ...publicProfile } = updated[0];
+
+        // Invalidate cache
+        await UserCache.invalidateUser(id);
+
         res.json(publicProfile);
     } catch (err) {
         next(err);

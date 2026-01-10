@@ -1,14 +1,16 @@
 import { Router } from 'express';
-import { getMeController, loginController, logoutController, refreshTokenController, registerController } from '../controllers/auth.controller';
+import { getMeController, loginController, logoutController, refreshTokenController, registerController } from '../controllers/auth.controller.js';
+import { authMiddleware } from '../middleware/auth.middleware.js';
+import { authRateLimiter } from '../middleware/rate-limiter.middleware.js';
 
 export const authRouter = Router();
 
 
-authRouter.post('/register', registerController);
+authRouter.post('/register', authRateLimiter, registerController);
 
-authRouter.post('/login', loginController);
+authRouter.post('/login', authRateLimiter, loginController);
 
-authRouter.post('/logout', logoutController);
+authRouter.post('/logout', authMiddleware, logoutController);
 authRouter.post('/refresh', refreshTokenController);
 
-authRouter.get('/me', getMeController);
+authRouter.get('/me', authMiddleware, getMeController);

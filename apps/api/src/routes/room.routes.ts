@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { authMiddleware } from '../middleware/auth.middleware.js';
+import { roomCreationRateLimiter } from '../middleware/rate-limiter.middleware.js';
 import {
     listRooms,
     getRoom,
@@ -39,7 +40,7 @@ roomRouter.get('/:id/participants', getRoomParticipants);
 // ==================== Protected Routes ====================
 
 // POST /rooms - Create a new room (requires auth)
-roomRouter.post('/', authMiddleware, createRoom);
+roomRouter.post('/', authMiddleware, roomCreationRateLimiter, createRoom);
 
 // PUT /rooms/:id - Update room details (owner only)
 roomRouter.put('/:id', authMiddleware, updateRoom);

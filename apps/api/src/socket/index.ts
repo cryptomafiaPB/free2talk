@@ -6,6 +6,7 @@ import * as roomService from '../services/room.service.js';
 import { db } from '../db/index.js';
 import { users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
+import { UserCache } from '../services/cache.service.js';
 
 type AuthSocket = Socket<ClientToServerEvents, ServerToClientEvents> & {
     userId?: string;
@@ -48,8 +49,9 @@ export function initSocketHandlers(
         userSockets.set(userId, socket.id);
         socketUsers.set(socket.id, userId);
 
-        // Update user online status
+        // Update user online status (DB + Redis)
         await db.update(users).set({ isOnline: true }).where(eq(users.id, userId));
+        await UserCache.setOnline(userId);
 
         // ==================== Hallway Events ====================
 
@@ -275,8 +277,9 @@ export function initSocketHandlers(
             userSockets.delete(userId);
             socketUsers.delete(socket.id);
 
-            // Update user online status
+            // Update user online status (DB + Redis)
             await db.update(users).set({ isOnline: false, lastSeenAt: new Date() }).where(eq(users.id, userId));
+            await UserCache.setOffline(userId);
 
             // Cleanup voice resources if in a room
             if (socket.roomId) {
