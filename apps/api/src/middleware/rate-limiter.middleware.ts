@@ -2,6 +2,8 @@ import rateLimit from 'express-rate-limit';
 import RedisStore from 'rate-limit-redis';
 import { redis } from '../db/redis.js';
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 /**
  * Rate limiter for authentication endpoints (register, login)
  * Limit: 5 requests per 15 minutes per IP
@@ -15,10 +17,10 @@ export const authRateLimiter = rateLimit({
     },
     standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
     legacyHeaders: false, // Disable `X-RateLimit-*` headers
-    store: new RedisStore({
+    store: isProduction ? new RedisStore({
         sendCommand: (...args: string[]) => redis.sendCommand(args),
         prefix: 'rl:auth:',
-    }),
+    }) : undefined,
     // Skip rate limiting for successful requests (only count failed attempts)
     skip: (req, res) => res.statusCode < 400,
 });
@@ -36,10 +38,10 @@ export const roomCreationRateLimiter = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
-    store: new RedisStore({
+    store: isProduction ? new RedisStore({
         sendCommand: (...args: string[]) => redis.sendCommand(args),
         prefix: 'rl:room:create:',
-    }),
+    }) : undefined,
     // Key by user ID instead of IP
     keyGenerator: (req) => {
         return req.user?.userId || req.ip || 'anonymous';
@@ -59,10 +61,10 @@ export const apiRateLimiter = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
-    store: new RedisStore({
+    store: isProduction ? new RedisStore({
         sendCommand: (...args: string[]) => redis.sendCommand(args),
         prefix: 'rl:api:',
-    }),
+    }) : undefined,
 });
 
 /**
@@ -78,8 +80,8 @@ export const strictRateLimiter = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
-    store: new RedisStore({
+    store: isProduction ? new RedisStore({
         sendCommand: (...args: string[]) => redis.sendCommand(args),
         prefix: 'rl:strict:',
-    }),
+    }) : undefined,
 });
