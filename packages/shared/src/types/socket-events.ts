@@ -1,4 +1,4 @@
-import type { RoomSummary, Participant } from './room';
+import type { RoomSummary, Participant } from './room.js';
 import type { RtpCapabilities, RtpParameters, DtlsParameters } from 'mediasoup/types';
 
 // Client → Server Events

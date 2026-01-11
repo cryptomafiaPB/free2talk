@@ -1,2 +1,2 @@
-export * from './auth.schema';
-export * from './room.schema';
+export * from './auth.schema.js';
+export * from './room.schema.js';
