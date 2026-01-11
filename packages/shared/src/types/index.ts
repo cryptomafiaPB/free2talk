@@ -1,3 +1,3 @@
-export * from './user';
-export * from './room';
-export * from './socket-events';
+export * from './user.js';
+export * from './room.js';
+export * from './socket-events.js';
