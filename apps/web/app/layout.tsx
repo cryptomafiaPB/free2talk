@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
@@ -14,8 +14,25 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Free2Talk - Language Learning Voice Platform',
-  description: 'Practice languages with native speakers through voice rooms and 1:1 conversations',
+  title: 'Free2Talk - Practice Languages with Native Speakers',
+  description: 'Join voice rooms and practice languages with native speakers from around the world. Free, open community for language learners.',
+  keywords: ['language learning', 'language exchange', 'voice chat', 'language practice', 'native speakers'],
+  authors: [{ name: 'Free2Talk Community' }],
+  openGraph: {
+    type: 'website',
+    title: 'Free2Talk - Practice Languages with Native Speakers',
+    description: 'Join voice rooms and practice languages with native speakers from around the world.',
+    siteName: 'Free2Talk',
+  },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+  themeColor: '#0d0d14',
 };
 
 export default function RootLayout({
@@ -24,7 +41,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
