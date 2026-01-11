@@ -1,30 +1,16 @@
 import { Router } from 'express';
+import { getMeController, loginController, logoutController, refreshTokenController, registerController } from '../controllers/auth.controller.js';
+import { authMiddleware } from '../middleware/auth.middleware.js';
+import { authRateLimiter } from '../middleware/rate-limiter.middleware.js';
 
 export const authRouter = Router();
 
-// TODO: Implement auth routes
-// POST /register
-// POST /login
-// POST /logout
-// POST /refresh
-// GET /me
 
-authRouter.post('/register', (req, res) => {
-    res.status(501).json({ message: 'Not implemented yet' });
-});
+authRouter.post('/register', authRateLimiter, registerController);
 
-authRouter.post('/login', (req, res) => {
-    res.status(501).json({ message: 'Not implemented yet' });
-});
+authRouter.post('/login', authRateLimiter, loginController);
 
-authRouter.post('/logout', (req, res) => {
-    res.status(501).json({ message: 'Not implemented yet' });
-});
+authRouter.post('/logout', authMiddleware, logoutController);
+authRouter.post('/refresh', refreshTokenController);
 
-authRouter.post('/refresh', (req, res) => {
-    res.status(501).json({ message: 'Not implemented yet' });
-});
-
-authRouter.get('/me', (req, res) => {
-    res.status(501).json({ message: 'Not implemented yet' });
-});
+authRouter.get('/me', authMiddleware, getMeController);

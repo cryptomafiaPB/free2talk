@@ -4,6 +4,8 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { initSocketHandlers } from './socket/index.js';
 import { initMediasoupWorkers } from './socket/mediasoup/workers.js';
+import { setSocketInstance } from './socket/socket-instance.js';
+import { connectRedis, disconnectRedis } from './db/redis.js';
 
 const PORT = process.env.PORT || 3001;
 
@@ -21,8 +23,15 @@ const io = new Server(httpServer, {
 // Initialize mediasoup workers
 async function start() {
     try {
+        // Connect to Redis
+        await connectRedis();
+        console.log('✓ Redis initialized');
+
         await initMediasoupWorkers();
         console.log('✓ mediasoup workers initialized');
+
+        // Set socket instance for global access
+        setSocketInstance(io);
 
         // Initialize socket handlers
         initSocketHandlers(io);
@@ -36,5 +45,18 @@ async function start() {
         process.exit(1);
     }
 }
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+    console.log('SIGTERM received, shutting down gracefully...');
+    await disconnectRedis();
+    process.exit(0);
+});
+
+process.on('SIGINT', async () => {
+    console.log('SIGINT received, shutting down gracefully...');
+    await disconnectRedis();
+    process.exit(0);
+});
 
 start();
