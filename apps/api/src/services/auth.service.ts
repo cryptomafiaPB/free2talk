@@ -86,6 +86,11 @@ export async function loginService(data: ReturnType<typeof loginSchema.safeParse
             throw new AppError('Invalid email or password', 401);
         }
 
+        // Check if user has a password (OAuth-only users don't have one)
+        if (!user.passwordHash) {
+            throw new AppError('Please sign in with Google instead', 401);
+        }
+
         const isPasswordValid = await verifyPassword(data.data!.password, user.passwordHash);
 
         if (!isPasswordValid) {

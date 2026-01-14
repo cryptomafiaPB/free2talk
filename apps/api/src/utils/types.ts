@@ -20,7 +20,8 @@ export interface RoomWithParticipants {
 
 export interface ParticipantInfo {
     id: string;
-    oderId: string;
+    oderId: string; // Legacy typo - keeping for backwards compatibility
+    userId: string; // Correct field name
     username: string;
     displayName: string | null;
     avatarUrl: string | null;

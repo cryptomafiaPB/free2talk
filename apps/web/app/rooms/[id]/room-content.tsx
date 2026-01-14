@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo, useCallback, memo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/design-system';
 import {
     Button,
@@ -20,215 +21,284 @@ import {
     Crown,
     VolumeX,
     Volume2,
+    Loader2,
+    AlertCircle,
 } from '@/components/ui/icons';
+import { VoiceProvider } from '@/lib/services/voice';
+import { EnhancedVoiceRoom } from '@/components/room';
+import { useAuth } from '@/lib/hooks/use-auth';
+import { api } from '@/lib/api';
+import type { RoomData, RoomParticipant } from '@/components/room/types';
 
 interface RoomContentProps {
     roomId: string;
 }
 
-// Mock room data
-const mockRoom = {
-    id: '1',
-    name: 'English Practice 🌟',
-    topic: 'Casual conversation for beginners',
-    languages: ['English', 'Spanish'],
-    maxParticipants: 12,
-    owner: {
-        id: 'u1',
-        username: 'sarah_m',
-        displayName: 'Sarah',
-    },
-};
-
-const mockParticipants = [
-    { id: 'u1', username: 'sarah_m', displayName: 'Sarah', role: 'owner', isMuted: false, isSpeaking: true },
-    { id: 'u2', username: 'alex_m', displayName: 'Alex', role: 'participant', isMuted: false, isSpeaking: false },
-    { id: 'u3', username: 'maria_g', displayName: 'Maria', role: 'participant', isMuted: true, isSpeaking: false },
-    { id: 'u4', username: 'john_d', displayName: 'John', role: 'participant', isMuted: false, isSpeaking: false },
-];
-
+/**
+ * Room Content Component
+ * 
+ * This component handles:
+ * 1. Fetching room data
+ * 2. Wrapping content with VoiceProvider
+ * 3. Rendering VoiceRoom with proper data
+ */
 export function RoomContent({ roomId }: RoomContentProps) {
-    const [isMuted, setIsMuted] = useState(true);
-    const [isDeafened, setIsDeafened] = useState(false);
-    const currentUserId = 'u2'; // Mock current user
+    const [room, setRoom] = useState<RoomData | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<Error | null>(null);
+    const router = useRouter();
+    const { user, isAuthenticated, isInitialized } = useAuth();
 
-    const room = mockRoom;
-    const participants = mockParticipants;
+    // Redirect if not authenticated
+    useEffect(() => {
+        if (isInitialized && !isAuthenticated) {
+            router.push('/login');
+        }
+    }, [isInitialized, isAuthenticated, router]);
+
+    // Fetch room data
+    useEffect(() => {
+        if (!isAuthenticated || !user) return;
+
+        let isMounted = true;
+
+        const fetchRoom = async () => {
+            try {
+                setIsLoading(true);
+                setError(null);
+
+                // Fetch room from API
+                const response = await api.get(`/rooms/${roomId}`);
+                const roomData = response.data.data || response.data;
+
+                if (!isMounted) return;
+
+                // Check if room exists
+                if (!roomData || !roomData.id) {
+                    throw new Error('Room not found');
+                }
+
+                // Transform API response to RoomData format
+                const transformedRoom: RoomData = {
+                    id: roomData.id,
+                    name: roomData.name,
+                    topic: roomData.topic,
+                    languages: roomData.languages || [],
+                    maxParticipants: roomData.maxParticipants,
+                    ownerId: roomData.ownerId,
+                    isActive: roomData.isActive !== false, // Default to active if not specified
+                    participants: (roomData.participants || []).map((p: any) => ({
+                        id: p.userId || p.id,
+                        username: p.user?.username || p.username || 'Unknown',
+                        displayName: p.user?.displayName || p.displayName || null,
+                        avatarUrl: p.user?.avatarUrl || p.avatarUrl || null,
+                        isOwner: p.userId === roomData.ownerId || p.id === roomData.ownerId,
+                        isMuted: true, // Default to muted
+                        isDeafened: false,
+                        isSpeaking: false,
+                        audioLevel: 0,
+                        joinedAt: p.joinedAt || new Date().toISOString(),
+                    })),
+                    createdAt: roomData.createdAt,
+                };
+
+                setRoom(transformedRoom);
+            } catch (err: any) {
+                if (!isMounted) return;
+                console.error('Failed to fetch room:', err);
+
+                // Determine error type
+                const status = err?.response?.status;
+                const message = err?.response?.data?.message || err?.message || 'Failed to load room';
+
+                // Create appropriate error message based on status
+                let errorMessage = message;
+                if (status === 404 || message.includes('not found')) {
+                    errorMessage = 'Room not found';
+                } else if (status === 410) {
+                    errorMessage = 'This room has been closed';
+                } else if (status === 403) {
+                    errorMessage = 'You do not have access to this room';
+                }
+
+                setError(err instanceof Error ? new Error(errorMessage) : new Error(errorMessage));
+            } finally {
+                if (isMounted) {
+                    setIsLoading(false);
+                }
+            }
+        };
+
+        fetchRoom();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [roomId, isAuthenticated, user]);
+
+    // Handle leave callback
+    const handleLeave = useCallback(() => {
+        // Additional cleanup if needed
+        console.log('Left room:', roomId);
+    }, [roomId]);
+
+    // Handle room closed callback
+    const handleRoomClosed = useCallback(() => {
+        router.push('/');
+    }, [router]);
+
+    // Determine if current user is owner
+    const isOwner = useMemo(() => {
+        return room?.ownerId === user?.id;
+    }, [room, user]);
+
+    // Current user ID
+    const currentUserId = user?.id || '';
+
+    // Show loading while checking auth
+    if (!isInitialized || isLoading) {
+        return <LoadingState />;
+    }
+
+    // Error state
+    if (error || !room) {
+        return (
+            <ErrorState
+                error={error || new Error('Room not found')}
+                onRetry={() => window.location.reload()}
+                errorType={error?.message.includes('closed') ? 'closed' : 'not-found'}
+            />
+        );
+    }
+
+    // Check if room is active
+    if (room.isActive === false) {
+        return (
+            <ErrorState
+                error={new Error('This room has been closed by the owner')}
+                onRetry={() => { }}
+                errorType="closed"
+            />
+        );
+    }
 
     return (
+        <VoiceProvider debug>
+            <div className="h-screen bg-background-primary">
+                <EnhancedVoiceRoom
+                    room={room}
+                    currentUserId={currentUserId}
+                    isOwner={isOwner}
+                    onLeave={handleLeave}
+                    onRoomClosed={handleRoomClosed}
+                />
+            </div>
+        </VoiceProvider>
+    );
+}
+
+/**
+ * Loading state component
+ */
+const LoadingState = memo(function LoadingState() {
+    return (
         <div className="flex flex-col h-screen bg-background-primary">
-            {/* Header */}
-            <header className="flex items-center justify-between px-4 py-3 border-b border-surface-border bg-background-secondary/50 backdrop-blur-xl">
+            {/* Skeleton Header */}
+            <header className="flex items-center justify-between px-4 py-3 border-b border-surface-border bg-background-secondary/50">
                 <div className="flex items-center gap-3">
-                    <Link
-                        href="/"
-                        className="p-2 -ml-2 rounded-lg hover:bg-surface-hover text-text-secondary transition-colors"
-                    >
-                        <ChevronLeft className="h-5 w-5" />
-                    </Link>
+                    <div className="w-9 h-9 rounded-lg bg-surface-default animate-pulse" />
                     <div>
-                        <h1 className="font-semibold text-text-primary line-clamp-1">{room.name}</h1>
-                        <div className="flex items-center gap-2">
-                            {room.languages.map((lang) => (
-                                <LanguageBadge key={lang} language={lang} size="sm" />
-                            ))}
-                        </div>
+                        <div className="h-5 w-32 bg-surface-default rounded animate-pulse" />
+                        <div className="h-4 w-20 bg-surface-default rounded mt-1 animate-pulse" />
                     </div>
-                </div>
-                <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="iconSm">
-                        <Users className="h-4 w-4" />
-                        <span className="text-xs ml-1">{participants.length}</span>
-                    </Button>
-                    <Button variant="ghost" size="iconSm">
-                        <MoreVertical className="h-4 w-4" />
-                    </Button>
                 </div>
             </header>
 
-            {/* Room Topic */}
-            {room.topic && (
-                <div className="px-4 py-2 bg-surface-default/50 border-b border-surface-borderSubtle">
-                    <p className="text-sm text-text-secondary">{room.topic}</p>
-                </div>
-            )}
-
-            {/* Participants Grid */}
-            <div className="flex-1 overflow-y-auto p-4">
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
-                    {participants.map((participant) => (
-                        <ParticipantCard
-                            key={participant.id}
-                            participant={participant}
-                            isCurrentUser={participant.id === currentUserId}
-                        />
-                    ))}
-
-                    {/* Empty slots */}
-                    {Array.from({ length: room.maxParticipants - participants.length }).map((_, i) => (
-                        <div
-                            key={`empty-${i}`}
-                            className="aspect-square rounded-2xl border-2 border-dashed border-surface-border flex items-center justify-center"
-                        >
-                            <Users className="h-8 w-8 text-text-tertiary/50" />
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Controls Bar */}
-            <div className="border-t border-surface-border bg-background-secondary/80 backdrop-blur-xl">
-                <div className="flex items-center justify-center gap-4 px-4 py-4 safe-area-bottom">
-                    {/* Mute Button */}
-                    <Button
-                        variant={isMuted ? 'danger' : 'secondary'}
-                        size="icon"
-                        className="h-14 w-14 rounded-full"
-                        onClick={() => setIsMuted(!isMuted)}
-                    >
-                        {isMuted ? (
-                            <MicOff className="h-6 w-6" />
-                        ) : (
-                            <Mic className="h-6 w-6" />
-                        )}
-                    </Button>
-
-                    {/* Deafen Button */}
-                    <Button
-                        variant={isDeafened ? 'danger' : 'ghost'}
-                        size="icon"
-                        className="h-12 w-12 rounded-full"
-                        onClick={() => setIsDeafened(!isDeafened)}
-                    >
-                        {isDeafened ? (
-                            <VolumeX className="h-5 w-5" />
-                        ) : (
-                            <Volume2 className="h-5 w-5" />
-                        )}
-                    </Button>
-
-                    {/* Leave Button */}
-                    <Link href="/">
-                        <Button
-                            variant="danger"
-                            size="icon"
-                            className="h-14 w-14 rounded-full bg-status-error"
-                        >
-                            <Phone className="h-6 w-6 rotate-[135deg]" />
-                        </Button>
-                    </Link>
-
-                    {/* Settings */}
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-12 w-12 rounded-full"
-                    >
-                        <Settings className="h-5 w-5" />
-                    </Button>
+            {/* Loading Spinner */}
+            <div className="flex-1 flex items-center justify-center">
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="h-8 w-8 text-primary-500 animate-spin" />
+                    <p className="text-text-secondary">Loading room...</p>
                 </div>
             </div>
         </div>
     );
-}
+});
 
-interface ParticipantCardProps {
-    participant: {
-        id: string;
-        username: string;
-        displayName: string;
-        role: string;
-        isMuted: boolean;
-        isSpeaking: boolean;
-    };
-    isCurrentUser: boolean;
-}
+/**
+ * Error state component
+ */
+const ErrorState = memo(function ErrorState({
+    error,
+    onRetry,
+    errorType = 'not-found',
+}: {
+    error: Error;
+    onRetry: () => void;
+    errorType?: 'not-found' | 'closed';
+}) {
+    const router = useRouter();
 
-function ParticipantCard({ participant, isCurrentUser }: ParticipantCardProps) {
-    const isOwner = participant.role === 'owner';
+    const errorConfig = {
+        'not-found': {
+            title: 'Room not found',
+            description: 'The room you are looking for does not exist or has been deleted.',
+            icon: AlertCircle,
+            showRetry: true,
+            action: 'Go Home',
+        },
+        'closed': {
+            title: 'Room is closed',
+            description: 'This room has been closed by the owner and is no longer available.',
+            icon: AlertCircle,
+            showRetry: false,
+            action: 'Back to Rooms',
+        },
+    }[errorType];
 
     return (
-        <Card
-            variant="interactive"
-            padding="sm"
-            className={cn(
-                'aspect-square flex flex-col items-center justify-center gap-2 relative',
-                participant.isSpeaking && 'ring-2 ring-voice-speaking'
-            )}
-        >
-            {/* Owner Badge */}
-            {isOwner && (
-                <div className="absolute top-2 left-2">
-                    <Crown className="h-4 w-4 text-status-warning" />
+        <div className="flex flex-col h-screen bg-background-primary">
+            {/* Header */}
+            <header className="flex items-center px-4 py-3 border-b border-surface-border bg-background-secondary/50">
+                <Link
+                    href="/"
+                    className="p-2 -ml-2 rounded-lg hover:bg-surface-hover text-text-secondary transition-colors"
+                >
+                    <ChevronLeft className="h-5 w-5" />
+                </Link>
+            </header>
+
+            {/* Error Content */}
+            <div className="flex-1 flex items-center justify-center p-4">
+                <div className="flex flex-col items-center gap-4 max-w-md text-center">
+                    <div className="w-16 h-16 rounded-full bg-status-error/20 flex items-center justify-center">
+                        <AlertCircle className="h-8 w-8 text-status-error" />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-semibold text-text-primary">{errorConfig.title}</h2>
+                        <p className="text-text-secondary mt-1">{errorConfig.description}</p>
+                    </div>
+                    <div className="flex gap-3">
+                        <Button
+                            variant="ghost"
+                            onClick={() => router.push('/')}
+                        >
+                            {errorConfig.action}
+                        </Button>
+                        {errorConfig.showRetry && (
+                            <Button
+                                variant="primary"
+                                onClick={onRetry}
+                            >
+                                Try Again
+                            </Button>
+                        )}
+                    </div>
                 </div>
-            )}
-
-            {/* You Badge */}
-            {isCurrentUser && (
-                <span className="absolute top-2 right-2 text-[10px] text-primary-400 font-medium">
-                    You
-                </span>
-            )}
-
-            {/* Avatar */}
-            <Avatar
-                fallback={participant.displayName}
-                size="xl"
-                status={participant.isSpeaking ? 'speaking' : participant.isMuted ? 'muted' : 'online'}
-                showStatus
-            />
-
-            {/* Name */}
-            <p className="text-sm font-medium text-text-primary truncate max-w-full px-2">
-                {participant.displayName}
-            </p>
-
-            {/* Mute indicator */}
-            {participant.isMuted && (
-                <div className="absolute bottom-2 right-2 p-1 rounded-full bg-surface-default">
-                    <MicOff className="h-3 w-3 text-voice-muted" />
-                </div>
-            )}
-        </Card>
+            </div>
+        </div>
     );
-}
+});
+
+LoadingState.displayName = 'LoadingState';
+ErrorState.displayName = 'ErrorState';

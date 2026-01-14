@@ -92,7 +92,7 @@ export function RoomFilters({ onSearch, onFilterChange, className }: RoomFilters
 
             {/* Sort & More Filters - Desktop */}
             <div className="hidden md:flex items-center justify-between">
-                <Tabs defaultValue="all">
+                <Tabs defaultValue="all" suppressHydrationWarning>
                     <TabsList>
                         {categories.map((cat) => (
                             <TabsTrigger key={cat.id} value={cat.id}>

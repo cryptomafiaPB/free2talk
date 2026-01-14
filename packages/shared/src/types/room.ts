@@ -25,13 +25,15 @@ export interface RoomSummary {
 export interface Participant {
     id: string;
     userId: string;
+    /** Legacy field - same as userId, kept for backwards compatibility */
+    oderId?: string;
     username: string;
     displayName?: string;
     avatarUrl?: string;
     role: 'owner' | 'participant';
     isMuted: boolean;
     isSpeaking: boolean;
-    joinedAt: Date;
+    joinedAt: Date | string;
 }
 
 export interface CreateRoomInput {

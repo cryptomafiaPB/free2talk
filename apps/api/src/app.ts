@@ -4,9 +4,11 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { authRouter } from './routes/auth.routes.js';
 import { userRouter } from './routes/user.routes.js';
+import { uploadRouter } from './routes/upload.routes.js';
 import { errorHandler } from './middleware/error.middleware.js';
 import { roomRouter } from './routes/room.routes.js';
 import { voiceRouter } from './routes/voice.routes.js';
+import randomRouter from './routes/random.routes.js';
 import cookieParser from 'cookie-parser';
 import { apiRateLimiter } from './middleware/rate-limiter.middleware.js';
 
@@ -35,8 +37,10 @@ app.get('/health', (req, res) => {
 // API Routes
 app.use('/api/v1/auth', authRouter);
 app.use('/api/v1/users', userRouter);
+app.use('/api/v1/upload', uploadRouter);
 app.use('/api/v1/rooms', roomRouter);
 app.use('/api/v1/voice', voiceRouter);
+app.use('/api/v1/random', randomRouter);
 
 // Error handler
 app.use(errorHandler);

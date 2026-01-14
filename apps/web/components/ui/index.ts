@@ -12,3 +12,4 @@ export * from './header';
 export * from './layout';
 export * from './room-card';
 export * from './room-filters';
+export * from './dialog';

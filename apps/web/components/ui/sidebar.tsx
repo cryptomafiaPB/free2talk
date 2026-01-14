@@ -12,22 +12,12 @@ import {
     MessageCircle,
     User,
     Settings,
-    LogOut,
-    Bell,
     Plus,
     Menu,
     X,
 } from './icons';
 import { useState } from 'react';
-
-interface SidebarProps {
-    user?: {
-        id: string;
-        username: string;
-        displayName?: string;
-        avatarUrl?: string;
-    } | null;
-}
+import { useAuthStore, selectIsAuthenticated, selectUser } from '@/lib/stores';
 
 interface NavItem {
     href: string;
@@ -42,9 +32,11 @@ const mainNavItems: NavItem[] = [
     { href: '/messages', label: 'Messages', icon: <MessageCircle className="h-5 w-5" /> },
 ];
 
-export function Sidebar({ user }: SidebarProps) {
+export function Sidebar() {
     const pathname = usePathname();
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const isAuthenticated = useAuthStore(selectIsAuthenticated);
+    const user = useAuthStore(selectUser);
 
     return (
         <aside
@@ -127,14 +119,14 @@ export function Sidebar({ user }: SidebarProps) {
 
             {/* User Section */}
             <div className="p-4 border-t border-surface-border">
-                {user ? (
+                {isAuthenticated && user ? (
                     <div className={cn(
                         'flex items-center gap-3',
                         isCollapsed && 'justify-center'
                     )}>
                         <Link href="/profile">
                             <Avatar
-                                src={user.avatarUrl}
+                                src={user.avatarUrl ?? undefined}
                                 alt={user.displayName || user.username}
                                 fallback={user.displayName || user.username}
                                 size="sm"
@@ -144,18 +136,18 @@ export function Sidebar({ user }: SidebarProps) {
                         </Link>
                         {!isCollapsed && (
                             <div className="flex-1 min-w-0">
-                                <p className="text-sm font-medium text-text-primary truncate">
+                                <p className="text-sm font-medium text-foreground truncate">
                                     {user.displayName || user.username}
                                 </p>
-                                <p className="text-xs text-text-tertiary truncate">
+                                <p className="text-xs text-muted-foreground truncate">
                                     @{user.username}
                                 </p>
                             </div>
                         )}
                         {!isCollapsed && (
-                            <button className="p-2 rounded-lg hover:bg-surface-hover text-text-tertiary transition-colors">
+                            <Link href="/settings" className="p-2 rounded-lg hover:bg-surface-hover text-muted-foreground transition-colors">
                                 <Settings className="h-4 w-4" />
-                            </button>
+                            </Link>
                         )}
                     </div>
                 ) : (

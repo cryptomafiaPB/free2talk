@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from 'express';
-import { TokenPayload, verifyAccessToken } from '../utils/JWT';
+import { TokenPayload, verifyAccessToken } from '../utils/JWT.js';
 
 // Extend Express Request type
 declare global {
@@ -10,6 +10,10 @@ declare global {
     }
 }
 
+/**
+ * Required authentication middleware
+ * Returns 401 if no valid token is provided
+ */
 export const authMiddleware = async (
     req: Request,
     res: Response,
@@ -43,9 +47,41 @@ export const authMiddleware = async (
 
         next();
     } catch (error) {
+        console.error('Auth Middleware Error:', error);
         return res.status(401).json({
             success: false,
             message: 'Invalid or expired token'
         });
+    }
+};
+
+/**
+ * Optional authentication middleware
+ * Attaches user if valid token is provided, but doesn't require it
+ */
+export const optionalAuthMiddleware = async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+) => {
+    try {
+        const authHeader = req.headers.authorization;
+
+        if (authHeader && authHeader.startsWith('Bearer ')) {
+            const token = authHeader.split(' ')[1];
+            if (token) {
+                try {
+                    const payload = verifyAccessToken(token);
+                    req.user = payload;
+                } catch {
+                    // Token invalid but continue without user
+                }
+            }
+        }
+
+        next();
+    } catch (error) {
+        // Continue without authentication
+        next();
     }
 };

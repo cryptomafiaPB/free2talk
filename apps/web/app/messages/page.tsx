@@ -2,11 +2,9 @@ import { MainLayout, PageContainer, EmptyState, Button } from '@/components/ui';
 import { MessageCircle } from '@/components/ui/icons';
 import Link from 'next/link';
 
-const mockUser = null;
-
 export default function MessagesPage() {
     return (
-        <MainLayout user={mockUser} headerTitle="Messages" showFAB={false}>
+        <MainLayout headerTitle="Messages" showFAB={false}>
             <PageContainer maxWidth="lg">
                 <div className="py-12">
                     <EmptyState

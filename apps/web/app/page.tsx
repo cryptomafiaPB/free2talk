@@ -1,14 +1,11 @@
 import { MainLayout, PageContainer } from '@/components/ui';
-import { RoomsContent } from './rooms-content';
-
-// Mock user for now - this would come from auth context
-const mockUser = null; // or set to a user object when logged in
+import { HallwayContent } from '@/components/hallway';
 
 export default function Home() {
   return (
-    <MainLayout user={mockUser} headerTitle="Voice Rooms">
+    <MainLayout headerTitle="Voice Rooms">
       <PageContainer>
-        <RoomsContent />
+        <HallwayContent />
       </PageContainer>
     </MainLayout>
   );

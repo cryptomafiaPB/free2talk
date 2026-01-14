@@ -1,10 +1,11 @@
 import { db } from '../db/index.js';
 import { rooms, roomParticipants, users } from '../db/schema.js';
-import { eq, and, isNull, desc, sql, count } from 'drizzle-orm';
+import { eq, and, isNull, desc, sql, count, lt } from 'drizzle-orm';
 import { AppError } from '../utils/app-error.js';
 import type { CreateRoomInput } from '@free2talk/shared';
 import { ParticipantInfo, RoomWithParticipants } from '../utils/types.js';
 import { RoomCache, UserCache } from './cache.service.js';
+import { getRoomSocketCount, broadcastToHallway } from '../socket/socket-instance.js';
 
 
 // Helper: Generate a URL-friendly slug from room name
@@ -211,16 +212,15 @@ export async function getRoomById(roomIdOrSlug: string): Promise<RoomWithPartici
  * Get all participants in a room
  */
 export async function getRoomParticipants(roomId: string): Promise<ParticipantInfo[]> {
-    // Check cache first
-    const cached = await RoomCache.getParticipants(roomId);
-    if (cached) {
-        return cached;
-    }
+    // NOTE: Participant caching disabled to prevent race conditions
+    // The cache invalidation timing was causing stale reads when multiple users join quickly.
+    // DB query is fast enough (indexed by roomId) and always returns fresh data.
 
     const participants = await db
         .select({
             id: roomParticipants.id,
-            oderId: users.id,
+            oderId: users.id, // Legacy typo - keeping for backwards compatibility
+            userId: users.id, // Correct field name
             username: users.username,
             displayName: users.displayName,
             avatarUrl: users.avatarUrl,
@@ -236,9 +236,6 @@ export async function getRoomParticipants(roomId: string): Promise<ParticipantIn
             )
         )
         .orderBy(roomParticipants.joinedAt);
-
-    // Cache the result
-    await RoomCache.cacheParticipants(roomId, participants);
 
     return participants;
 }
@@ -388,7 +385,8 @@ export async function joinRoom(roomId: string, userId: string): Promise<{ room: 
         room: { ...room, participantCount: room.participantCount + 1 },
         participant: {
             id: participant.id,
-            oderId: user.id,
+            oderId: user.id, // Legacy - keeping for backwards compatibility
+            userId: user.id, // Correct field name
             username: user.username,
             displayName: user.displayName,
             avatarUrl: user.avatarUrl,
@@ -401,7 +399,7 @@ export async function joinRoom(roomId: string, userId: string): Promise<{ room: 
 /**
  * Leave a room
  */
-export async function leaveRoom(roomId: string, userId: string): Promise<void> {
+export async function leaveRoom(roomId: string, userId: string): Promise<{ roomClosed: boolean }> {
     // Find the participant record
     const participant = await db.query.roomParticipants.findFirst({
         where: and(
@@ -414,6 +412,8 @@ export async function leaveRoom(roomId: string, userId: string): Promise<void> {
     if (!participant) {
         throw new AppError('You are not in this room', 400);
     }
+
+    let roomClosed = false;
 
     // If owner is leaving, close the room or transfer ownership
     if (participant.role === 'owner') {
@@ -443,6 +443,25 @@ export async function leaveRoom(roomId: string, userId: string): Promise<void> {
                 .update(rooms)
                 .set({ isActive: false, closedAt: new Date() })
                 .where(eq(rooms.id, roomId));
+            roomClosed = true;
+        }
+    } else {
+        // Non-owner leaving - check if room should be closed (no one left)
+        const remainingParticipants = await db.query.roomParticipants.findFirst({
+            where: and(
+                eq(roomParticipants.roomId, roomId),
+                isNull(roomParticipants.leftAt),
+                sql`${roomParticipants.userId} != ${userId}`
+            ),
+        });
+
+        if (!remainingParticipants) {
+            // No one left, close the room
+            await db
+                .update(rooms)
+                .set({ isActive: false, closedAt: new Date() })
+                .where(eq(rooms.id, roomId));
+            roomClosed = true;
         }
     }
 
@@ -455,6 +474,14 @@ export async function leaveRoom(roomId: string, userId: string): Promise<void> {
     // Invalidate caches
     await RoomCache.invalidateRoom(roomId);
     await UserCache.cacheUserRoom(userId, null);
+
+    // If room was closed, remove from active rooms cache
+    if (roomClosed) {
+        await RoomCache.removeActiveRoom(roomId);
+        await RoomCache.invalidateRoomsList();
+    }
+
+    return { roomClosed };
 }
 
 /**
@@ -548,19 +575,26 @@ export async function kickUser(roomId: string, ownerId: string, targetUserId: st
 
 /**
  * Transfer room ownership
+ * IMPORTANT: Room stays active, old owner remains as participant
  */
 export async function transferOwnership(
     roomId: string,
     currentOwnerId: string,
     newOwnerId: string
-): Promise<void> {
-    // Get room
+): Promise<{ room: RoomWithParticipants; oldOwner: ParticipantInfo; newOwner: ParticipantInfo }> {
+    console.log(`[TransferOwnership] Transferring ownership of room ${roomId} from ${currentOwnerId} to ${newOwnerId}`);
+
+    // Get room with full details
     const room = await db.query.rooms.findFirst({
         where: eq(rooms.id, roomId),
     });
 
     if (!room) {
         throw new AppError('Room not found', 404);
+    }
+
+    if (!room.isActive) {
+        throw new AppError('Cannot transfer ownership of a closed room', 400);
     }
 
     if (room.ownerId !== currentOwnerId) {
@@ -571,7 +605,7 @@ export async function transferOwnership(
         throw new AppError('You are already the owner', 400);
     }
 
-    // Check if new owner is in the room
+    // Check if new owner is in the room (must be an active participant)
     const newOwnerParticipant = await db.query.roomParticipants.findFirst({
         where: and(
             eq(roomParticipants.roomId, roomId),
@@ -584,7 +618,7 @@ export async function transferOwnership(
         throw new AppError('Target user is not in this room', 400);
     }
 
-    // Get current owner participant record
+    // Get current owner participant record (must exist)
     const currentOwnerParticipant = await db.query.roomParticipants.findFirst({
         where: and(
             eq(roomParticipants.roomId, roomId),
@@ -593,25 +627,50 @@ export async function transferOwnership(
         ),
     });
 
-    // Update room owner
+    if (!currentOwnerParticipant) {
+        throw new AppError('Current owner is not in the room', 400);
+    }
+
+    console.log(`[TransferOwnership] Updating database - Room: ${roomId}`);
+
+    // Update room owner (CRITICAL: Room stays active!)
     await db
         .update(rooms)
         .set({ ownerId: newOwnerId })
         .where(eq(rooms.id, roomId));
 
-    // Update participant roles
+    console.log(`[TransferOwnership] Room owner updated in database`);
+
+    // Update participant roles (old owner becomes participant, stays in room)
     await db
         .update(roomParticipants)
         .set({ role: 'participant' })
-        .where(eq(roomParticipants.id, currentOwnerParticipant!.id));
+        .where(eq(roomParticipants.id, currentOwnerParticipant.id));
 
     await db
         .update(roomParticipants)
         .set({ role: 'owner' })
         .where(eq(roomParticipants.id, newOwnerParticipant.id));
 
+    console.log(`[TransferOwnership] Participant roles updated - Old owner: ${currentOwnerId} now participant, New owner: ${newOwnerId}`);
+
     // Invalidate cache
     await RoomCache.invalidateRoom(roomId);
+
+    // Fetch updated room and participants for response
+    const updatedRoom = await getRoomById(roomId);
+    const participants = await getRoomParticipants(roomId);
+
+    const oldOwnerInfo = participants.find(p => (p.userId || p.oderId) === currentOwnerId)!;
+    const newOwnerInfo = participants.find(p => (p.userId || p.oderId) === newOwnerId)!;
+
+    console.log(`[TransferOwnership] SUCCESS - Room ${roomId} ownership transferred. Room is still active: ${updatedRoom.isActive}`);
+
+    return {
+        room: updatedRoom,
+        oldOwner: oldOwnerInfo,
+        newOwner: newOwnerInfo,
+    };
 }
 
 /**
@@ -755,4 +814,118 @@ export async function getUserCurrentRoom(userId: string): Promise<RoomWithPartic
     }
 
     return getRoomById(participation.roomId);
+}
+
+/**
+ * Cleanup stale rooms - close any active rooms with no participants
+ * Should be called on server startup
+ */
+export async function cleanupStaleRooms(): Promise<number> {
+    // Find all active rooms
+    const activeRooms = await db.query.rooms.findMany({
+        where: eq(rooms.isActive, true),
+    });
+
+    let closedCount = 0;
+
+    for (const room of activeRooms) {
+        // Check if room has any active participants
+        const activeParticipant = await db.query.roomParticipants.findFirst({
+            where: and(
+                eq(roomParticipants.roomId, room.id),
+                isNull(roomParticipants.leftAt)
+            ),
+        });
+
+        if (!activeParticipant) {
+            // No active participants, close the room
+            await db
+                .update(rooms)
+                .set({ isActive: false, closedAt: new Date() })
+                .where(eq(rooms.id, room.id));
+
+            // Cleanup caches
+            await RoomCache.invalidateRoom(room.id);
+            await RoomCache.removeActiveRoom(room.id);
+
+            closedCount++;
+            console.log(`Cleaned up stale room: ${room.id} (${room.name})`);
+        }
+    }
+
+    if (closedCount > 0) {
+        await RoomCache.invalidateRoomsList();
+    }
+
+    return closedCount;
+}
+/**
+ * Cleanup abandoned rooms - rooms that have been created but have no socket connections
+ * and are older than the grace period.
+ * 
+ * This handles the "ghost room" issue where:
+ * 1. User creates a room (participant added to DB)
+ * 2. Socket join fails (timeout, disconnect, etc.)
+ * 3. Room appears in hallway with 1 participant but no one is actually there
+ * 
+ * @param graceMinutes - How old a room must be before it's considered abandoned
+ * @returns Number of rooms closed
+ */
+export async function cleanupAbandonedRooms(graceMinutes: number = 2): Promise<number> {
+    const graceThreshold = new Date(Date.now() - graceMinutes * 60 * 1000);
+
+    // Find active rooms created before the grace threshold
+    const oldRooms = await db.query.rooms.findMany({
+        where: and(
+            eq(rooms.isActive, true),
+            lt(rooms.createdAt, graceThreshold)
+        ),
+    });
+
+    let closedCount = 0;
+
+    for (const room of oldRooms) {
+        // Check if room has any socket connections
+        const socketCount = await getRoomSocketCount(room.id);
+
+        if (socketCount === 0) {
+            console.log(`Found abandoned room: ${room.id} (${room.name}) - 0 socket connections`);
+
+            // Mark all participants as left
+            await db
+                .update(roomParticipants)
+                .set({ leftAt: new Date() })
+                .where(
+                    and(
+                        eq(roomParticipants.roomId, room.id),
+                        isNull(roomParticipants.leftAt)
+                    )
+                );
+
+            // Close the room
+            await db
+                .update(rooms)
+                .set({ isActive: false, closedAt: new Date() })
+                .where(eq(rooms.id, room.id));
+
+            // Cleanup caches
+            await RoomCache.invalidateRoom(room.id);
+            await RoomCache.removeActiveRoom(room.id);
+
+            // Clear user room cache for the owner
+            await UserCache.cacheUserRoom(room.ownerId, null);
+
+            // Notify hallway
+            broadcastToHallway('hallway:room-closed', room.id);
+
+            closedCount++;
+            console.log(`Closed abandoned room: ${room.id} (${room.name})`);
+        }
+    }
+
+    if (closedCount > 0) {
+        await RoomCache.invalidateRoomsList();
+    }
+
+    return closedCount;
 }

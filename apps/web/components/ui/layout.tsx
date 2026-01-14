@@ -7,12 +7,6 @@ import { Header } from './header';
 
 interface MainLayoutProps {
     children: React.ReactNode;
-    user?: {
-        id: string;
-        username: string;
-        displayName?: string;
-        avatarUrl?: string;
-    } | null;
     showHeader?: boolean;
     showSidebar?: boolean;
     showMobileNav?: boolean;
@@ -22,7 +16,6 @@ interface MainLayoutProps {
 
 export function MainLayout({
     children,
-    user,
     showHeader = true,
     showSidebar = true,
     showMobileNav = true,
@@ -30,9 +23,9 @@ export function MainLayout({
     headerTitle,
 }: MainLayoutProps) {
     return (
-        <div className="min-h-screen bg-background-primary">
+        <div className="min-h-screen bg-background">
             {/* Sidebar - Desktop only */}
-            {showSidebar && <Sidebar user={user} />}
+            {showSidebar && <Sidebar />}
 
             {/* Main Content Area */}
             <div className={cn(
@@ -40,7 +33,7 @@ export function MainLayout({
                 showSidebar && 'md:ml-64'
             )}>
                 {/* Header */}
-                {showHeader && <Header user={user} title={headerTitle} />}
+                {showHeader && <Header title={headerTitle} />}
 
                 {/* Page Content */}
                 <main className={cn(

@@ -6,8 +6,11 @@ import { initSocketHandlers } from './socket/index.js';
 import { initMediasoupWorkers } from './socket/mediasoup/workers.js';
 import { setSocketInstance } from './socket/socket-instance.js';
 import { connectRedis, disconnectRedis } from './db/redis.js';
+import { cleanupStaleRooms, cleanupAbandonedRooms } from './services/room.service.js';
 
 const PORT = process.env.PORT || 3001;
+const ABANDONED_ROOM_CLEANUP_INTERVAL = 60 * 1000; // 1 minute
+const ABANDONED_ROOM_GRACE_MINUTES = 2; // Rooms older than 2 minutes with no connections
 
 const httpServer = createServer(app);
 
@@ -20,12 +23,20 @@ const io = new Server(httpServer, {
     transports: ['websocket', 'polling'],
 });
 
+let abandonedRoomCleanupInterval: NodeJS.Timeout | null = null;
+
 // Initialize mediasoup workers
 async function start() {
     try {
         // Connect to Redis
         await connectRedis();
         console.log('✓ Redis initialized');
+
+        // Cleanup any stale rooms from previous sessions
+        const cleanedRooms = await cleanupStaleRooms();
+        if (cleanedRooms > 0) {
+            console.log(`✓ Cleaned up ${cleanedRooms} stale room(s)`);
+        }
 
         await initMediasoupWorkers();
         console.log('✓ mediasoup workers initialized');
@@ -37,6 +48,19 @@ async function start() {
         initSocketHandlers(io);
         console.log('✓ Socket.io handlers initialized');
 
+        // Start periodic cleanup of abandoned rooms
+        abandonedRoomCleanupInterval = setInterval(async () => {
+            try {
+                const closedCount = await cleanupAbandonedRooms(ABANDONED_ROOM_GRACE_MINUTES);
+                if (closedCount > 0) {
+                    console.log(`[Cleanup] Closed ${closedCount} abandoned room(s)`);
+                }
+            } catch (error) {
+                console.error('[Cleanup] Error cleaning up abandoned rooms:', error);
+            }
+        }, ABANDONED_ROOM_CLEANUP_INTERVAL);
+        console.log('✓ Abandoned room cleanup job started');
+
         httpServer.listen(PORT, () => {
             console.log(`🚀 Server running on http://localhost:${PORT}`);
         });
@@ -47,16 +71,18 @@ async function start() {
 }
 
 // Graceful shutdown
-process.on('SIGTERM', async () => {
-    console.log('SIGTERM received, shutting down gracefully...');
-    await disconnectRedis();
-    process.exit(0);
-});
+async function shutdown() {
+    console.log('Shutting down gracefully...');
 
-process.on('SIGINT', async () => {
-    console.log('SIGINT received, shutting down gracefully...');
+    if (abandonedRoomCleanupInterval) {
+        clearInterval(abandonedRoomCleanupInterval);
+    }
+
     await disconnectRedis();
     process.exit(0);
-});
+}
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);
 
 start();

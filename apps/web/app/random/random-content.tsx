@@ -1,207 +1,247 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState, useCallback, useMemo, memo, useEffect } from 'react';
+import { useRandomCall } from '@/lib/hooks/use-random-call';
 import {
-    Card,
-    Button,
-    LanguageBadge,
-    Avatar,
-} from '@/components/ui';
-import {
-    Users,
-    Globe,
-    Phone,
-    RefreshCw,
-    Mic,
-} from '@/components/ui/icons';
+    IdleState,
+    SearchingState,
+    ConnectingState,
+    ConnectedState,
+    EndedState,
+    ReportDialog,
+} from '@/components/random';
 import { cn } from '@/lib/design-system';
+import type { RandomCallPreferences } from '@free2talk/shared';
 
-type MatchState = 'idle' | 'searching' | 'found' | 'connected';
+/**
+ * RandomMatchContent - Main component for random voice call feature
+ * 
+ * Modern, glassy, mobile-first UI with optimized rendering.
+ * Uses P2P WebRTC for direct peer-to-peer audio communication.
+ */
+export const RandomMatchContent = memo(function RandomMatchContent() {
+    // Preferences state (persisted locally)
+    // Initialize with default values to avoid hydration mismatch
+    const [preferences, setPreferences] = useState<RandomCallPreferences>({
+        preferenceEnabled: false,
+        languages: [],
+    });
 
-export function RandomMatchContent() {
-    const [matchState, setMatchState] = useState<MatchState>('idle');
-    const [selectedLanguages, setSelectedLanguages] = useState<string[]>(['English']);
-
-    const languages = ['English', 'Spanish', 'French', 'German', 'Japanese', 'Korean', 'Chinese'];
-
-    const toggleLanguage = (lang: string) => {
-        if (selectedLanguages.includes(lang)) {
-            if (selectedLanguages.length > 1) {
-                setSelectedLanguages(selectedLanguages.filter(l => l !== lang));
+    // Restore preferences from localStorage after hydration
+    const [isHydrated, setIsHydrated] = useState(false);
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem('random-call-preferences');
+            if (saved) {
+                setPreferences(JSON.parse(saved));
             }
-        } else {
-            setSelectedLanguages([...selectedLanguages, lang]);
+        } catch {
+            // Ignore parse errors
         }
-    };
+        setIsHydrated(true);
+    }, []);
 
-    const startSearching = () => {
-        setMatchState('searching');
-        // Simulate finding a match after 3 seconds
-        setTimeout(() => {
-            setMatchState('found');
-        }, 3000);
-    };
+    const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
 
-    const cancelSearch = () => {
-        setMatchState('idle');
-    };
+    // Use the random call hook
+    const {
+        state,
+        stats,
+        partner,
+        matchedLanguage,
+        isAudioEnabled,
+        error,
+        remoteStream,
+        startQueue,
+        cancelQueue,
+        nextPartner,
+        endCall,
+        toggleAudio,
+        reportUser,
+        // New features
+        connectionQuality,
+        isSpeaking,
+        isPartnerSpeaking,
+        messages,
+        sendMessage,
+        callDuration,
+    } = useRandomCall();
+
+    // Persist preferences to localStorage
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('random-call-preferences', JSON.stringify(preferences));
+        }
+    }, [preferences]);
+
+    // Handlers with useCallback for optimal rendering
+    const handlePreferenceChange = useCallback((updates: Partial<RandomCallPreferences>) => {
+        setPreferences(prev => ({ ...prev, ...updates }));
+    }, []);
+
+    const handleStartQueue = useCallback(() => {
+        startQueue(preferences);
+    }, [startQueue, preferences]);
+
+    const handleCancelQueue = useCallback(() => {
+        cancelQueue();
+    }, [cancelQueue]);
+
+    const handleNextPartner = useCallback(() => {
+        nextPartner();
+    }, [nextPartner]);
+
+    const handleEndCall = useCallback(() => {
+        endCall();
+    }, [endCall]);
+
+    const handleToggleAudio = useCallback(() => {
+        toggleAudio();
+    }, [toggleAudio]);
+
+    const handleOpenReport = useCallback(() => {
+        setIsReportDialogOpen(true);
+    }, []);
+
+    const handleCloseReport = useCallback(() => {
+        setIsReportDialogOpen(false);
+    }, []);
+
+    const handleSubmitReport = useCallback((reason: string, details?: string) => {
+        reportUser(reason, details);
+    }, [reportUser]);
+
+    const handleStartAgain = useCallback(() => {
+        startQueue(preferences);
+    }, [startQueue, preferences]);
+
+    // Render the appropriate state
+    const content = useMemo(() => {
+        switch (state) {
+            case 'idle':
+                return (
+                    <IdleState
+                        stats={stats}
+                        preferences={preferences}
+                        onStartQueue={handleStartQueue}
+                        onPreferenceChange={handlePreferenceChange}
+                        error={error}
+                    />
+                );
+
+            case 'queued':
+                return (
+                    <SearchingState
+                        stats={stats}
+                        onCancel={handleCancelQueue}
+                    />
+                );
+
+            case 'connecting':
+                return (
+                    <ConnectingState
+                        partner={partner}
+                        matchedLanguage={matchedLanguage}
+                    />
+                );
+
+            case 'connected':
+                return (
+                    <ConnectedState
+                        partner={partner}
+                        matchedLanguage={matchedLanguage}
+                        isAudioEnabled={isAudioEnabled}
+                        remoteStream={remoteStream}
+                        onToggleAudio={handleToggleAudio}
+                        onNextPartner={handleNextPartner}
+                        onEndCall={handleEndCall}
+                        onReport={handleOpenReport}
+                        // New features
+                        connectionQuality={connectionQuality}
+                        isSpeaking={isSpeaking}
+                        isPartnerSpeaking={isPartnerSpeaking}
+                        messages={messages}
+                        onSendMessage={sendMessage}
+                        callDuration={callDuration}
+                    />
+                );
+
+            case 'ended':
+                return (
+                    <EndedState onStartAgain={handleStartAgain} />
+                );
+
+            default:
+                return null;
+        }
+    }, [
+        state,
+        stats,
+        preferences,
+        handleStartQueue,
+        handlePreferenceChange,
+        error,
+        handleCancelQueue,
+        partner,
+        matchedLanguage,
+        isAudioEnabled,
+        remoteStream,
+        handleToggleAudio,
+        handleNextPartner,
+        handleEndCall,
+        handleOpenReport,
+        handleStartAgain,
+        // New features
+        connectionQuality,
+        isSpeaking,
+        isPartnerSpeaking,
+        messages,
+        sendMessage,
+        callDuration,
+    ]);
 
     return (
-        <div className="space-y-6 py-8">
-            {/* Header */}
-            <div className="text-center space-y-2">
-                <div className="inline-flex items-center justify-center h-16 w-16 rounded-full bg-primary-500/10 mb-4">
-                    <Users className="h-8 w-8 text-primary-400" />
-                </div>
-                <h1 className="text-2xl font-bold text-text-primary">Find a Partner</h1>
-                <p className="text-text-secondary max-w-sm mx-auto">
-                    Get matched with someone who speaks your target language
-                </p>
+        <div className="min-h-[calc(100vh-4rem)] flex flex-col">
+            {/* Background gradient */}
+            <div
+                className={cn(
+                    'fixed inset-0 -z-10 pointer-events-none',
+                    'bg-gradient-to-br from-primary-950/50 via-background to-background'
+                )}
+            />
+
+            {/* Decorative blobs */}
+            <div className="fixed inset-0 -z-10 pointer-events-none overflow-hidden">
+                <div
+                    className={cn(
+                        'absolute -top-1/4 -left-1/4 w-1/2 h-1/2',
+                        'bg-primary-500/10 rounded-full blur-3xl'
+                    )}
+                />
+                <div
+                    className={cn(
+                        'absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2',
+                        'bg-primary-600/10 rounded-full blur-3xl'
+                    )}
+                />
             </div>
 
-            {/* Language Selection */}
-            <Card>
-                <div className="space-y-4">
-                    <div className="flex items-center gap-2">
-                        <Globe className="h-5 w-5 text-primary-400" />
-                        <h3 className="font-medium text-text-primary">Practice Languages</h3>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                        {languages.map((lang) => (
-                            <button
-                                key={lang}
-                                onClick={() => toggleLanguage(lang)}
-                                disabled={matchState !== 'idle'}
-                                className={cn(
-                                    'px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200',
-                                    selectedLanguages.includes(lang)
-                                        ? 'bg-primary-500 text-white'
-                                        : 'bg-surface-hover text-text-secondary hover:text-text-primary',
-                                    matchState !== 'idle' && 'opacity-50 cursor-not-allowed'
-                                )}
-                            >
-                                {lang}
-                            </button>
-                        ))}
-                    </div>
+            {/* Main content */}
+            <main className="flex-1 flex items-center justify-center p-4 sm:p-6">
+                <div className="w-full max-w-lg">
+                    {content}
                 </div>
-            </Card>
+            </main>
 
-            {/* Match State Display */}
-            <div className="min-h-[300px] flex items-center justify-center">
-                {matchState === 'idle' && (
-                    <div className="text-center space-y-6">
-                        <div className="relative">
-                            <div className="h-32 w-32 rounded-full bg-surface-default border-2 border-dashed border-surface-border flex items-center justify-center mx-auto">
-                                <Users className="h-12 w-12 text-text-tertiary" />
-                            </div>
-                        </div>
-                        <Button size="lg" onClick={startSearching} className="px-8">
-                            <Phone className="h-5 w-5" />
-                            Start Matching
-                        </Button>
-                    </div>
-                )}
-
-                {matchState === 'searching' && (
-                    <div className="text-center space-y-6">
-                        <div className="relative">
-                            {/* Pulsing circles */}
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="h-32 w-32 rounded-full bg-primary-500/20 animate-ping" />
-                            </div>
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="h-24 w-24 rounded-full bg-primary-500/30 animate-ping animation-delay-200" />
-                            </div>
-                            <div className="relative h-32 w-32 rounded-full bg-primary-500/10 border-2 border-primary-500/50 flex items-center justify-center mx-auto">
-                                <RefreshCw className="h-10 w-10 text-primary-400 animate-spin" />
-                            </div>
-                        </div>
-                        <div>
-                            <p className="text-lg text-text-primary">Looking for a partner...</p>
-                            <p className="text-sm text-text-secondary mt-1">
-                                Practicing: {selectedLanguages.join(', ')}
-                            </p>
-                        </div>
-                        <Button variant="ghost" onClick={cancelSearch}>
-                            Cancel
-                        </Button>
-                    </div>
-                )}
-
-                {matchState === 'found' && (
-                    <div className="text-center space-y-6">
-                        <div className="relative">
-                            <div className="absolute inset-0 flex items-center justify-center">
-                                <div className="h-36 w-36 rounded-full bg-status-success/10 animate-pulse" />
-                            </div>
-                            <Avatar
-                                fallback="Maria"
-                                size="3xl"
-                                className="mx-auto relative border-4 border-status-success"
-                            />
-                        </div>
-                        <div>
-                            <p className="text-xl font-semibold text-text-primary">Maria</p>
-                            <div className="flex items-center justify-center gap-2 mt-2">
-                                <LanguageBadge language="Spanish" size="sm" />
-                                <LanguageBadge language="English" size="sm" />
-                            </div>
-                        </div>
-                        <div className="flex gap-3 justify-center">
-                            <Button
-                                size="lg"
-                                onClick={() => setMatchState('connected')}
-                            >
-                                <Mic className="h-5 w-5" />
-                                Connect
-                            </Button>
-                            <Button
-                                variant="ghost"
-                                onClick={() => setMatchState('searching')}
-                            >
-                                Skip
-                            </Button>
-                        </div>
-                    </div>
-                )}
-
-                {matchState === 'connected' && (
-                    <Card className="w-full max-w-sm mx-auto text-center p-8">
-                        <Avatar
-                            fallback="Maria"
-                            size="2xl"
-                            status="speaking"
-                            showStatus
-                            className="mx-auto mb-4"
-                        />
-                        <p className="text-lg font-semibold text-text-primary">Connected with Maria</p>
-                        <p className="text-sm text-text-secondary mt-1">Call in progress...</p>
-                        <div className="flex justify-center gap-4 mt-6">
-                            <Button variant="ghost" size="icon" className="h-12 w-12 rounded-full">
-                                <Mic className="h-5 w-5" />
-                            </Button>
-                            <Button
-                                variant="danger"
-                                size="icon"
-                                className="h-12 w-12 rounded-full"
-                                onClick={() => setMatchState('idle')}
-                            >
-                                <Phone className="h-5 w-5" />
-                            </Button>
-                        </div>
-                    </Card>
-                )}
-            </div>
-
-            {/* Tips */}
-            {matchState === 'idle' && (
-                <Card variant="ghost" className="bg-surface-default/50 text-center py-6">
-                    <p className="text-sm text-text-secondary">
-                        💡 Select multiple languages to find more partners
-                    </p>
-                </Card>
-            )}
+            {/* Report dialog */}
+            <ReportDialog
+                isOpen={isReportDialogOpen}
+                onClose={handleCloseReport}
+                onSubmit={handleSubmitReport}
+            />
         </div>
     );
-}
+});
+
+// Default export for compatibility
+export default RandomMatchContent;

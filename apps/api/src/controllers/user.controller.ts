@@ -1,92 +1,229 @@
-import { db } from '../db';
-import { users } from '../db/schema';
-import { eq } from 'drizzle-orm';
-import { NextFunction, Request, Response } from 'express';
-import type { User, UserProfile } from '../../../../packages/shared/src/types/user';
-import { AppError } from '../utils/app-error';
-import { UserCache } from '../services/cache.service';
+/**
+ * User/Profile Controller
+ * 
+ * Handles user profile operations.
+ */
 
-// Get user profile by ID
-export const getUserProfile = async (req: Request, res: Response, next: NextFunction) => {
+import { Request, Response, NextFunction } from 'express';
+import * as profileService from '../services/profile.service.js';
+import { AppError } from '../utils/app-error.js';
+
+// ==================== Profile Endpoints ====================
+
+/**
+ * Get current user's full profile
+ * GET /api/v1/users/me
+ */
+export async function getMyProfile(req: Request, res: Response, next: NextFunction) {
     try {
-        const { id } = req.params;
+        const userId = req.user!.userId;
 
-        // Check cache first
-        const cached = await UserCache.getUser(id);
-        if (cached) {
-            return res.json(cached);
+        const [profile, stats] = await Promise.all([
+            profileService.getUserProfile(userId),
+            profileService.getUserStats(userId),
+        ]);
+
+        if (!profile) {
+            return next(new AppError('Profile not found', 404));
         }
 
-        const user = await db.select().from(users).where(eq(users.id, id)).limit(1);
-        if (!user.length) {
-            return next(new AppError('User not found', 404));
+        res.json({
+            success: true,
+            data: {
+                profile,
+                stats,
+            },
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * Update current user's profile
+ * PATCH /api/v1/users/me
+ */
+export async function updateMyProfile(req: Request, res: Response, next: NextFunction) {
+    try {
+        const userId = req.user!.userId;
+        const { displayName, bio, avatarUrl, nativeLanguages, learningLanguages } = req.body;
+
+        const updated = await profileService.updateProfile(userId, {
+            displayName,
+            bio,
+            avatarUrl,
+            nativeLanguages,
+            learningLanguages,
+        });
+
+        if (!updated) {
+            return next(new AppError('Failed to update profile', 500));
         }
-        // Remove sensitive info
-        const { email, passwordHash, ...publicProfile } = user[0];
 
-        // Cache the result
-        await UserCache.cacheUser(id, publicProfile);
-
-        res.json(publicProfile);
-    } catch (err) {
-        next(err);
+        res.json({
+            success: true,
+            data: { user: updated },
+        });
+    } catch (error) {
+        next(error);
     }
-};
+}
 
-// List all users (basic info)
-export const listUsers = async (req: Request, res: Response, next: NextFunction) => {
+/**
+ * Update username
+ * PATCH /api/v1/users/me/username
+ */
+export async function updateUsername(req: Request, res: Response, next: NextFunction) {
     try {
-        const allUsers = await db.select().from(users);
-        const publicUsers = allUsers.map(({ email, passwordHash, ...rest }) => rest);
-        res.json(publicUsers);
-    } catch (err) {
-        next(err);
+        const userId = req.user!.userId;
+        const { username } = req.body;
+
+        if (!username || typeof username !== 'string') {
+            return next(new AppError('Username is required', 400));
+        }
+
+        await profileService.updateUsername(userId, username);
+
+        res.json({
+            success: true,
+            message: 'Username updated successfully',
+        });
+    } catch (error) {
+        if (error instanceof Error) {
+            return next(new AppError(error.message, 400));
+        }
+        next(error);
     }
-};
+}
 
-// Update user profile (self only)
-export const updateUserProfile = async (req: Request, res: Response, next: NextFunction) => {
+/**
+ * Check username availability
+ * GET /api/v1/users/check-username/:username
+ */
+export async function checkUsername(req: Request, res: Response, next: NextFunction) {
     try {
-        const { id } = req.params;
+        const { username } = req.params;
         const userId = req.user?.userId;
 
-        if (userId !== id) {
-            return next(new AppError('Unauthorized', 401));
-        }
+        const available = await profileService.isUsernameAvailable(username, userId);
 
-        const updateData = req.body;
-        const updated = await db.update(users).set({ ...updateData, updatedAt: new Date() }).where(eq(users.id, id)).returning();
-        if (!updated.length) {
-            return next(new AppError('User not found', 404));
-        }
-        const { email, passwordHash, ...publicProfile } = updated[0];
-
-        // Invalidate cache
-        await UserCache.invalidateUser(id);
-
-        res.json(publicProfile);
-    } catch (err) {
-        next(err);
+        res.json({
+            success: true,
+            data: { available },
+        });
+    } catch (error) {
+        next(error);
     }
-};
+}
 
-// Delete user (self only)
-export const deleteUser = async (req: Request, res: Response, next: NextFunction) => {
+/**
+ * Get user's activity feed
+ * GET /api/v1/users/me/activity
+ */
+export async function getMyActivity(req: Request, res: Response, next: NextFunction) {
+    try {
+        const userId = req.user!.userId;
+        const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
+
+        const activity = await profileService.getUserActivity(userId, limit);
+
+        res.json({
+            success: true,
+            data: activity,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * Get user's created rooms
+ * GET /api/v1/users/me/rooms
+ */
+export async function getMyRooms(req: Request, res: Response, next: NextFunction) {
+    try {
+        const userId = req.user!.userId;
+        const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
+
+        const rooms = await profileService.getUserRooms(userId, limit);
+
+        res.json({
+            success: true,
+            data: rooms,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+/**
+ * Get user's statistics
+ * GET /api/v1/users/me/stats
+ */
+export async function getMyStats(req: Request, res: Response, next: NextFunction) {
+    try {
+        const userId = req.user!.userId;
+        const stats = await profileService.getUserStats(userId);
+
+        res.json({
+            success: true,
+            data: stats,
+        });
+    } catch (error) {
+        next(error);
+    }
+}
+
+// ==================== Public Profile Endpoints ====================
+
+/**
+ * Get public profile by ID
+ * GET /api/v1/users/:id
+ */
+export async function getUserProfile(req: Request, res: Response, next: NextFunction) {
     try {
         const { id } = req.params;
 
-        const userId = req.user?.userId;
+        const profile = await profileService.getUserProfile(id);
 
-        if (userId !== id) {
-            return next(new AppError('Unauthorized', 401));
-        }
-
-        const deleted = await db.delete(users).where(eq(users.id, id)).returning();
-        if (!deleted.length) {
+        if (!profile) {
             return next(new AppError('User not found', 404));
         }
-        res.json({ message: 'User deleted' });
-    } catch (err) {
-        next(err);
+
+        res.json({
+            success: true,
+            data: profile,
+        });
+    } catch (error) {
+        next(error);
     }
-};
+}
+
+/**
+ * Get public profile by username
+ * GET /api/v1/users/username/:username
+ */
+export async function getUserByUsername(req: Request, res: Response, next: NextFunction) {
+    try {
+        const { username } = req.params;
+
+        const profile = await profileService.getUserByUsername(username);
+
+        if (!profile) {
+            return next(new AppError('User not found', 404));
+        }
+
+        // Also get stats for public profile
+        const stats = await profileService.getUserStats(profile.id);
+
+        res.json({
+            success: true,
+            data: {
+                profile,
+                stats,
+            },
+        });
+    } catch (error) {
+        next(error);
+    }
+}

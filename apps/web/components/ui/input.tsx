@@ -123,4 +123,82 @@ const SearchInput = forwardRef<HTMLInputElement, Omit<InputProps, 'leftIcon'>>(
 
 SearchInput.displayName = 'SearchInput';
 
-export { Input, SearchInput, inputVariants };
+// Label Component
+interface LabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> {
+    required?: boolean;
+}
+
+const Label = forwardRef<HTMLLabelElement, LabelProps>(
+    ({ className, children, required, ...props }, ref) => {
+        return (
+            <label
+                ref={ref}
+                className={cn(
+                    'block text-sm font-medium text-text-secondary',
+                    className
+                )}
+                {...props}
+            >
+                {children}
+                {required && <span className="text-status-error ml-1">*</span>}
+            </label>
+        );
+    }
+);
+
+Label.displayName = 'Label';
+
+// Textarea Component
+interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+    error?: string;
+    label?: string;
+    helperText?: string;
+}
+
+const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
+    ({ className, error, label, helperText, id, ...props }, ref) => {
+        const textareaId = id || props.name;
+        const hasError = !!error;
+
+        return (
+            <div className="w-full space-y-1.5">
+                {label && (
+                    <label
+                        htmlFor={textareaId}
+                        className="block text-sm font-medium text-text-secondary"
+                    >
+                        {label}
+                    </label>
+                )}
+                <textarea
+                    id={textareaId}
+                    className={cn(
+                        'flex min-h-[80px] w-full rounded-xl border bg-surface-default px-4 py-2.5',
+                        'text-sm text-text-primary placeholder:text-text-tertiary',
+                        'transition-all duration-200',
+                        'focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-500',
+                        'disabled:cursor-not-allowed disabled:opacity-50',
+                        hasError
+                            ? 'border-status-error/50 focus:ring-status-error/50 focus:border-status-error'
+                            : 'border-surface-border hover:border-surface-hover',
+                        className
+                    )}
+                    ref={ref}
+                    {...props}
+                />
+                {(error || helperText) && (
+                    <p className={cn(
+                        'text-xs',
+                        hasError ? 'text-status-error' : 'text-text-tertiary'
+                    )}>
+                        {error || helperText}
+                    </p>
+                )}
+            </div>
+        );
+    }
+);
+
+Textarea.displayName = 'Textarea';
+
+export { Input, SearchInput, inputVariants, Label, Textarea };

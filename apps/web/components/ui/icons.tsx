@@ -60,6 +60,20 @@ import {
     Send,
     Image,
     Smile,
+    Wifi,
+    WifiOff,
+    UserPlus,
+    UserMinus,
+    // New icons for redesigned room UI
+    Monitor,
+    MonitorOff,
+    Grid3X3,
+    Maximize2,
+    Signal,
+    SignalHigh,
+    SignalMedium,
+    SignalLow,
+    SignalZero,
     type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/design-system';
@@ -120,6 +134,20 @@ export {
     Send,
     Image,
     Smile,
+    Wifi,
+    WifiOff,
+    UserPlus,
+    UserMinus,
+    // New icons for redesigned room UI
+    Monitor,
+    MonitorOff,
+    Grid3X3,
+    Maximize2,
+    Signal,
+    SignalHigh,
+    SignalMedium,
+    SignalLow,
+    SignalZero,
 };
 
 // Icon wrapper component with consistent sizing

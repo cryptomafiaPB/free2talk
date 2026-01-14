@@ -7,6 +7,7 @@ import { db } from '../db/index.js';
 import { users } from '../db/schema.js';
 import { eq } from 'drizzle-orm';
 import { UserCache } from '../services/cache.service.js';
+import { initRandomCallHandlers, registerRandomCallEvents } from './random-handlers.js';
 
 type AuthSocket = Socket<ClientToServerEvents, ServerToClientEvents> & {
     userId?: string;
@@ -17,41 +18,88 @@ type AuthSocket = Socket<ClientToServerEvents, ServerToClientEvents> & {
 const userSockets = new Map<string, string>(); // userId -> socketId
 const socketUsers = new Map<string, string>(); // socketId -> userId
 
+// Custom error class for socket errors with codes
+class SocketAuthError extends Error {
+    constructor(
+        message: string,
+        public code: string = 'AUTH_ERROR',
+        public statusCode: number = 401
+    ) {
+        super(message);
+        this.name = 'SocketAuthError';
+    }
+}
+
 export function initSocketHandlers(
     io: Server<ClientToServerEvents, ServerToClientEvents>
 ) {
+    // Initialize random call background processes
+    initRandomCallHandlers(io);
+
     // Authentication middleware
     io.use(async (socket: AuthSocket, next) => {
+        const socketId = socket.id;
+        const clientIp = socket.handshake.address;
+
+        console.log(`[Socket Auth] Connection attempt - Socket: ${socketId}, IP: ${clientIp}`);
+
         try {
             const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.split(' ')[1];
 
             if (!token) {
-                return next(new Error('Authentication token missing'));
+                console.warn(`[Socket Auth] FAILED - No token provided - Socket: ${socketId}`);
+                const err = new SocketAuthError('Authentication token missing', 'TOKEN_MISSING');
+                (err as any).data = { code: 'TOKEN_MISSING' };
+                return next(err);
             }
 
-            const payload = verifyAccessToken(token);
+            // Verify token
+            let payload;
+            try {
+                payload = verifyAccessToken(token);
+            } catch (tokenError: any) {
+                const isExpired = tokenError.name === 'TokenExpiredError';
+                const errorCode = isExpired ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID';
+                const message = isExpired ? 'Access token expired' : 'Invalid access token';
+
+                console.warn(`[Socket Auth] FAILED - ${message} - Socket: ${socketId}, Error: ${tokenError.message}`);
+
+                const err = new SocketAuthError(message, errorCode);
+                (err as any).data = { code: errorCode };
+                return next(err);
+            }
+
             socket.userId = payload.userId;
-
-
-            console.log(`Socket authenticated: ${socket.id} (User: ${payload.userId})`);
+            console.log(`[Socket Auth] SUCCESS - Socket: ${socketId}, User: ${payload.userId}`);
             next();
-        } catch (error) {
-            console.error('Socket authentication failed:', error);
-            next(new Error('Authentication failed'));
+        } catch (error: any) {
+            console.error(`[Socket Auth] FAILED - Unexpected error - Socket: ${socketId}`, error);
+            const err = new SocketAuthError('Authentication failed', 'AUTH_ERROR');
+            (err as any).data = { code: 'AUTH_ERROR' };
+            next(err);
         }
     });
 
-    io.on('connection', async (socket: AuthSocket) => {
+    io.on('connection', (socket: AuthSocket) => {
         const userId = socket.userId!;
         console.log(`Client connected: ${socket.id} (User: ${userId})`);
 
-        // Track connection
+        // Track connection (synchronous)
         userSockets.set(userId, socket.id);
         socketUsers.set(socket.id, userId);
 
-        // Update user online status (DB + Redis)
-        await db.update(users).set({ isOnline: true }).where(eq(users.id, userId));
-        await UserCache.setOnline(userId);
+        // Debug: Log all events received
+        socket.onAny((event, ...args) => {
+            const timestamp = new Date().toISOString();
+            console.log(`[Socket Debug] ${timestamp} Event received: ${event}`, args.slice(0, -1).map(a => typeof a === 'function' ? '[callback]' : JSON.stringify(a).slice(0, 100)));
+        });
+
+        // ==================== REGISTER ALL EVENT HANDLERS FIRST (synchronously) ====================
+        // This ensures handlers are ready before any async operations complete
+        // and before the client can send events
+
+        // ==================== Random Call Events ====================
+        registerRandomCallEvents(io, socket);
 
         // ==================== Hallway Events ====================
 
@@ -67,60 +115,278 @@ export function initSocketHandlers(
 
         // ==================== Room Events ====================
 
-        socket.on('room:join', async (roomId: string) => {
+        /**
+         * INDUSTRY STANDARD: Room Join Flow
+         * 
+         * 1. Verify room is active
+         * 2. Add user to room in database (if not already present)
+         * 3. Join socket room channel
+         * 4. Get all existing voice producers
+         * 5. Send full state to joining user (participants + producers)
+         * 6. Notify existing participants about new user
+         * 7. Update hallway with new participant count
+         */
+        socket.on('room:join', async (roomId, callback) => {
+            console.log(`[RoomJoin] User ${userId} joining room ${roomId}`);
+            console.log(`[RoomJoin] Socket ID: ${socket.id}`);
+
             try {
-                // Verify user can join the room
+                // 1. Verify room exists and is active
                 const room = await roomService.getRoomById(roomId);
 
                 if (!room.isActive) {
+                    console.log(`[RoomJoin] REJECTED - Room ${roomId} is closed`);
                     socket.emit('error', { code: 'ROOM_CLOSED', message: 'Room is closed' });
+                    if (callback) callback({ success: false, error: 'Room is closed' });
                     return;
                 }
 
-                // Join room socket channel
+                // 2. Add user to room in database (if not already a participant)
+                // This ensures participant is persisted in DB for UI state consistency
+                let joinResult;
+                let currentParticipant;
+
+                // Check if user is already a participant
+                let participants = await roomService.getRoomParticipants(roomId);
+                const existingParticipant = participants.find((p) => p.userId === userId || p.oderId === userId);
+
+                if (!existingParticipant) {
+                    // User is not in the room yet - add them to database
+                    try {
+                        joinResult = await roomService.joinRoom(roomId, userId);
+                        currentParticipant = joinResult.participant;
+                        console.log(`[RoomJoin] User ${userId} added to database as participant`);
+
+                        // Refresh participants list to include the new user
+                        participants = await roomService.getRoomParticipants(roomId);
+                    } catch (joinError: any) {
+                        console.error(`[RoomJoin] Failed to add user to database:`, joinError);
+                        socket.emit('error', { code: 'JOIN_FAILED', message: joinError.message || 'Failed to join room' });
+                        if (callback) callback({ success: false, error: joinError.message || 'Failed to join room' });
+                        return;
+                    }
+                } else {
+                    // User is already in the room (reconnection or refresh)
+                    currentParticipant = existingParticipant;
+                    console.log(`[RoomJoin] User ${userId} already exists as participant - skipping database insert`);
+                }
+
+                // 3. Join socket room channel
                 socket.join(`room:${roomId}`);
                 socket.roomId = roomId;
+                console.log(`[RoomJoin] Socket ${socket.id} joined room channel room:${roomId}`);
 
-                console.log(`User ${userId} joined room ${roomId}`);
+                // 4. Get all existing voice producers in the room (includes paused state)
+                const existingProducers = voiceService.getOtherProducers(roomId, userId);
+                console.log(`[RoomJoin] Room ${roomId} has ${existingProducers.length} active producers`);
 
-                // Get participant info
-                const participants = await roomService.getRoomParticipants(roomId);
-                const participant = participants.find((p) => p.oderId === userId);
+                // 5. Get mute states for all participants from voice service
+                const muteStates = voiceService.getParticipantMuteStates(roomId);
 
-                if (participant) {
-                    // Notify others in the room
-                    socket.to(`room:${roomId}`).emit('room:user-joined', {
-                        id: participant.id,
-                        userId: participant.oderId,
-                        username: participant.username,
-                        displayName: participant.displayName || undefined,
-                        avatarUrl: participant.avatarUrl || undefined,
-                        role: participant.role,
-                        isMuted: false,
+                console.log(`[RoomJoin] Room ${roomId} has ${participants.length} participants in database`);
+
+                // 6. Transform participants for client with actual mute states
+                const participantList = participants.map(p => {
+                    const participantUserId = p.userId || p.oderId;
+                    // Check actual mute state from voice service, default to true if no producer
+                    const isMuted = muteStates.get(participantUserId) ?? true;
+
+                    return {
+                        id: p.id,
+                        userId: participantUserId,
+                        username: p.username,
+                        displayName: p.displayName || undefined,
+                        avatarUrl: p.avatarUrl || undefined,
+                        role: p.role,
+                        isMuted,
                         isSpeaking: false,
-                        joinedAt: participant.joinedAt,
+                        joinedAt: p.joinedAt,
+                    };
+                });
+
+                // 7. Notify ALL participants about new user (including sender - client filters)
+                // IMPORTANT: Using io.to() instead of socket.to() to ensure ALL sockets receive
+                // This fixes the issue where participants don't see each other joining
+                if (currentParticipant) {
+                    const roomChannel = `room:${roomId}`;
+                    const roomSockets = io.sockets.adapter.rooms.get(roomChannel);
+                    console.log(`[RoomJoin] Broadcasting room:user-joined to channel ${roomChannel}`);
+                    console.log(`[RoomJoin] Sockets in room channel: ${roomSockets ? Array.from(roomSockets).join(', ') : 'none'}`);
+                    console.log(`[RoomJoin] Broadcasting to ALL sockets in room (client filters self)`);
+
+                    // Broadcast to ALL sockets in the room - client-side filtering handles self
+                    io.to(roomChannel).emit('room:user-joined', {
+                        id: currentParticipant.id,
+                        oderId: currentParticipant.userId || currentParticipant.oderId,
+                        userId: currentParticipant.userId || currentParticipant.oderId,
+                        username: currentParticipant.username,
+                        displayName: currentParticipant.displayName || undefined,
+                        avatarUrl: currentParticipant.avatarUrl || undefined,
+                        role: currentParticipant.role,
+                        isMuted: true, // New users always start muted
+                        isSpeaking: false,
+                        joinedAt: currentParticipant.joinedAt,
+                    });
+                    console.log(`[RoomJoin] Broadcast sent for user ${currentParticipant.username} to ${roomSockets?.size || 0} sockets`);
+
+                    // ALSO broadcast full participant list for reconciliation
+                    // This helps clients that may have missed earlier events sync their state
+                    // Note: Using type assertion since 'room:participants-updated' is a new event
+                    (io.to(roomChannel) as any).emit('room:participants-updated', {
+                        participants: participantList,
+                        reason: 'user-joined',
+                    });
+                    console.log(`[RoomJoin] Broadcast room:participants-updated with ${participantList.length} participants`);
+                }
+
+                // 8. Update hallway with new participant count
+                io.to('hallway').emit('hallway:room-updated', {
+                    id: room.id,
+                    name: room.name,
+                    topic: room.topic || undefined,
+                    languages: room.languages || [],
+                    participantCount: participants.length,
+                    maxParticipants: room.maxParticipants,
+                    ownerId: room.ownerId,
+                    ownerName: room.owner.username,
+                });
+
+                console.log(`[RoomJoin] SUCCESS - User ${userId} joined room ${roomId}`);
+
+                // Send full state to joining user
+                if (callback) {
+                    callback({
+                        success: true,
+                        participants: participantList,
+                        producers: existingProducers,
                     });
                 }
-            } catch (error) {
-                console.error('Error joining room:', error);
-                socket.emit('error', { code: 'JOIN_FAILED', message: 'Failed to join room' });
+            } catch (error: any) {
+                console.error(`[RoomJoin] ERROR - User ${userId} failed to join room ${roomId}:`, error);
+                socket.emit('error', { code: 'JOIN_FAILED', message: error.message || 'Failed to join room' });
+                if (callback) callback({ success: false, error: error.message || 'Failed to join room' });
             }
         });
 
-        socket.on('room:leave', async (roomId: string) => {
+        /**
+         * Room Sync - Request full room state (for reconnection scenarios)
+         * Also rejoins the socket to the room channel (important after reconnection!)
+         */
+        socket.on('room:sync', async (roomId, callback) => {
+            console.log(`[RoomSync] User ${userId} requesting sync for room ${roomId}`);
+            console.log(`[RoomSync] Socket ID: ${socket.id}`);
+
+            try {
+                // Verify user is a participant in this room
+                const participants = await roomService.getRoomParticipants(roomId);
+                const isParticipant = participants.some(p =>
+                    (p.userId || p.oderId) === userId
+                );
+
+                if (!isParticipant) {
+                    console.log(`[RoomSync] User ${userId} is not a participant in room ${roomId}`);
+                    if (callback) callback({ success: false, error: 'Not a participant' });
+                    return;
+                }
+
+                // Rejoin socket to room channel (important for reconnection!)
+                socket.join(`room:${roomId}`);
+                socket.roomId = roomId;
+                console.log(`[RoomSync] Socket ${socket.id} rejoined room channel room:${roomId}`);
+
+                const existingProducers = voiceService.getOtherProducers(roomId, userId);
+                const muteStates = voiceService.getParticipantMuteStates(roomId);
+
+                const participantList = participants.map(p => {
+                    const participantUserId = p.userId || p.oderId;
+                    const isMuted = muteStates.get(participantUserId) ?? true;
+
+                    return {
+                        id: p.id,
+                        userId: participantUserId,
+                        username: p.username,
+                        displayName: p.displayName || undefined,
+                        avatarUrl: p.avatarUrl || undefined,
+                        role: p.role,
+                        isMuted,
+                        isSpeaking: false,
+                        joinedAt: p.joinedAt,
+                    };
+                });
+
+                if (callback) {
+                    callback({
+                        success: true,
+                        participants: participantList,
+                        producers: existingProducers,
+                    });
+                }
+            } catch (error) {
+                console.error(`[RoomSync] ERROR:`, error);
+                if (callback) callback({ success: false });
+            }
+        });
+
+        socket.on('room:leave', async (roomId: string, callback?: (response: { success: boolean }) => void) => {
+            console.log(`[RoomLeave] User ${userId} leaving room ${roomId}`);
+
             try {
                 socket.leave(`room:${roomId}`);
                 socket.roomId = undefined;
 
-                // Notify others
-                socket.to(`room:${roomId}`).emit('room:user-left', userId);
-
-                // Cleanup voice resources
+                // Cleanup voice resources first
                 await voiceService.cleanupParticipant(roomId, userId);
 
+                // Notify others that user left
+                socket.to(`room:${roomId}`).emit('room:user-left', userId);
+
+                // Leave the room (handles ownership transfer and room closure)
+                const { roomClosed } = await roomService.leaveRoom(roomId, userId);
+
+                if (roomClosed) {
+                    // Notify everyone in the room it's closing
+                    io.to(`room:${roomId}`).emit('room:closed', 'Room was closed by the owner');
+                    io.to('hallway').emit('hallway:room-closed', roomId);
+                    console.log(`[RoomLeave] Room ${roomId} closed - owner left`);
+                } else {
+                    // Check if ownership was transferred
+                    const room = await roomService.getRoomById(roomId);
+                    if (room.ownerId !== userId) {
+                        io.to(`room:${roomId}`).emit('room:owner-changed', room.ownerId);
+                    }
+
+                    // Broadcast updated participant list for reconciliation
+                    const participants = await roomService.getRoomParticipants(roomId);
+                    const muteStates = voiceService.getParticipantMuteStates(roomId);
+                    const participantList = participants.map(p => {
+                        const participantUserId = p.userId || p.oderId;
+                        const isMuted = muteStates.get(participantUserId) ?? true;
+                        return {
+                            id: p.id,
+                            userId: participantUserId,
+                            oderId: participantUserId,
+                            username: p.username,
+                            displayName: p.displayName || undefined,
+                            avatarUrl: p.avatarUrl || undefined,
+                            role: p.role,
+                            isMuted,
+                            isSpeaking: false,
+                            joinedAt: p.joinedAt,
+                        };
+                    });
+
+                    (io.to(`room:${roomId}`) as any).emit('room:participants-updated', {
+                        participants: participantList,
+                        reason: 'user-left',
+                    });
+                    console.log(`[RoomLeave] Broadcast room:participants-updated with ${participantList.length} participants`);
+                }
+
                 console.log(`User ${userId} left room ${roomId}`);
+                callback?.({ success: true });
             } catch (error) {
                 console.error('Error leaving room:', error);
+                callback?.({ success: false });
             }
         });
 
@@ -281,29 +547,28 @@ export function initSocketHandlers(
             await db.update(users).set({ isOnline: false, lastSeenAt: new Date() }).where(eq(users.id, userId));
             await UserCache.setOffline(userId);
 
-            // Cleanup voice resources if in a room
+            // Cleanup voice resources and leave room if in one
             if (socket.roomId) {
+                const roomId = socket.roomId;
                 try {
-                    await voiceService.cleanupParticipant(socket.roomId, userId);
+                    // Cleanup voice resources first
+                    await voiceService.cleanupParticipant(roomId, userId);
 
-                    // Notify others
-                    socket.to(`room:${socket.roomId}`).emit('room:user-left', userId);
+                    // Notify others that user left
+                    socket.to(`room:${roomId}`).emit('room:user-left', userId);
 
-                    // Handle room cleanup or ownership transfer
-                    const room = await roomService.getRoomById(socket.roomId);
-                    if (room.ownerId === userId) {
-                        const participants = await roomService.getRoomParticipants(socket.roomId);
-                        if (participants.length > 1) {
-                            // Transfer ownership to the next participant
-                            const nextOwner = participants.find((p) => p.oderId !== userId);
-                            if (nextOwner) {
-                                await roomService.transferOwnership(socket.roomId, userId, nextOwner.oderId);
-                                io.to(`room:${socket.roomId}`).emit('room:owner-changed', nextOwner.oderId);
-                            }
-                        } else {
-                            // Close room if owner was the last participant
-                            await roomService.closeRoom(socket.roomId, userId);
-                            io.to('hallway').emit('hallway:room-closed', socket.roomId);
+                    // Leave the room (this handles ownership transfer and room closure)
+                    const { roomClosed } = await roomService.leaveRoom(roomId, userId);
+
+                    if (roomClosed) {
+                        // Notify hallway that room was closed
+                        io.to('hallway').emit('hallway:room-closed', roomId);
+                        console.log(`Room ${roomId} closed - owner left and no participants remaining`);
+                    } else {
+                        // Check if ownership was transferred
+                        const room = await roomService.getRoomById(roomId);
+                        if (room.ownerId !== userId) {
+                            io.to(`room:${roomId}`).emit('room:owner-changed', room.ownerId);
                         }
                     }
                 } catch (error) {
@@ -311,6 +576,17 @@ export function initSocketHandlers(
                 }
             }
         });
+
+        // ==================== Async Initialization (runs after all handlers are registered) ====================
+        // Update user online status in background - don't block event handling
+        (async () => {
+            try {
+                await db.update(users).set({ isOnline: true }).where(eq(users.id, userId));
+                await UserCache.setOnline(userId);
+            } catch (error) {
+                console.error('Error updating user online status:', error);
+            }
+        })();
     });
 }
 

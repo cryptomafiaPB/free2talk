@@ -325,24 +325,58 @@ export async function setProducerPaused(
 
 //  * Get all producers in a room except the given user
 
-export function getOtherProducers(roomId: string, userId: string): Array<{ userId: string; producerId: string }> {
+export function getOtherProducers(roomId: string, userId: string): Array<{ userId: string; producerId: string; paused: boolean }> {
     const room = rooms.get(roomId);
     if (!room) {
         return [];
     }
 
-    const producers: Array<{ userId: string; producerId: string }> = [];
+    const producers: Array<{ userId: string; producerId: string; paused: boolean }> = [];
 
     for (const [participantUserId, participant] of room.participants) {
         if (participantUserId !== userId && participant.producer && !participant.producer.closed) {
             producers.push({
                 userId: participantUserId,
                 producerId: participant.producer.id,
+                paused: participant.producer.paused,
             });
         }
     }
 
     return producers;
+}
+
+
+//  * Get mute states for all participants in a room
+
+export function getParticipantMuteStates(roomId: string): Map<string, boolean> {
+    const room = rooms.get(roomId);
+    const muteStates = new Map<string, boolean>();
+
+    if (!room) {
+        return muteStates;
+    }
+
+    for (const [userId, participant] of room.participants) {
+        // If they have a producer, check if it's paused. If no producer yet, they're muted.
+        const isMuted = !participant.producer || participant.producer.paused;
+        muteStates.set(userId, isMuted);
+    }
+
+    return muteStates;
+}
+
+
+//  * Check if a specific user is muted
+
+export function isParticipantMuted(roomId: string, userId: string): boolean {
+    const room = rooms.get(roomId);
+    if (!room) return true;
+
+    const participant = room.participants.get(userId);
+    if (!participant || !participant.producer) return true;
+
+    return participant.producer.paused;
 }
 
 

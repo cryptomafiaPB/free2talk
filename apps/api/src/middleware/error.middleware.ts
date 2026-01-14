@@ -12,15 +12,15 @@ export function errorHandler(
     next: NextFunction
 ) {
     // Log error to file (append)
-    const logPath = path.join(__dirname, '../../logs/error.log');
-    const logMsg = `[${new Date().toISOString()}] ${err.stack || err.message}\n`;
-    try {
-        fs.mkdirSync(path.dirname(logPath), { recursive: true });
-        fs.appendFileSync(logPath, logMsg);
-    } catch (e) {
-        // Fallback to console if file logging fails
-        console.error('Failed to write error log:', e);
-    }
+    // const logPath = path.join(__dirname, '../../logs/error.log');
+    // const logMsg = `[${new Date().toISOString()}] ${err.stack || err.message}\n`;
+    // try {
+    //     fs.mkdirSync(path.dirname(logPath), { recursive: true });
+    //     fs.appendFileSync(logPath, logMsg);
+    // } catch (e) {
+    //     // Fallback to console if file logging fails
+    //     console.error('Failed to write error log:', e);
+    // }
 
     // Always log to console in development
     if (process.env.NODE_ENV !== 'production') {

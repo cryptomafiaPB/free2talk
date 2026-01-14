@@ -3,23 +3,17 @@
 import Link from 'next/link';
 import { cn } from '@/lib/design-system';
 import { Button } from './button';
-import { Avatar } from './avatar';
-import { Bell, Plus, User } from './icons';
+import { Bell, Plus } from './icons';
+import { UserMenu } from '@/components/auth';
 
 interface HeaderProps {
-    user?: {
-        id: string;
-        username: string;
-        displayName?: string;
-        avatarUrl?: string;
-    } | null;
     title?: string;
     showCreateButton?: boolean;
 }
 
-export function Header({ user, title = 'Voice Rooms', showCreateButton = true }: HeaderProps) {
+export function Header({ title = 'Voice Rooms', showCreateButton = true }: HeaderProps) {
     return (
-        <header className="sticky top-0 z-30 bg-background-primary/80 backdrop-blur-xl border-b border-surface-border">
+        <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-xl border-b border-surface-border">
             <div className="flex items-center justify-between h-14 px-4 md:px-6">
                 {/* Logo - Mobile only */}
                 <div className="flex items-center gap-3 md:hidden">
@@ -31,7 +25,7 @@ export function Header({ user, title = 'Voice Rooms', showCreateButton = true }:
                 </div>
 
                 {/* Title - Desktop */}
-                <h1 className="hidden md:block text-xl font-semibold text-text-primary">
+                <h1 className="hidden md:block text-xl font-semibold text-foreground">
                     {title}
                 </h1>
 
@@ -52,30 +46,13 @@ export function Header({ user, title = 'Voice Rooms', showCreateButton = true }:
                     )}
 
                     {/* Notifications */}
-                    {user && (
-                        <button className="relative p-2 rounded-lg hover:bg-surface-hover text-text-secondary transition-colors">
-                            <Bell className="h-5 w-5" />
-                            <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary-500" />
-                        </button>
-                    )}
+                    <button className="relative p-2 rounded-lg hover:bg-surface-hover text-muted-foreground transition-colors">
+                        <Bell className="h-5 w-5" />
+                        <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary-500" />
+                    </button>
 
-                    {/* User Menu - Mobile */}
-                    <div className="md:hidden">
-                        {user ? (
-                            <Link href="/profile">
-                                <Avatar
-                                    src={user.avatarUrl}
-                                    alt={user.displayName || user.username}
-                                    fallback={user.displayName || user.username}
-                                    size="sm"
-                                />
-                            </Link>
-                        ) : (
-                            <Button variant="ghost" size="sm" asChild>
-                                <Link href="/login">Sign In</Link>
-                            </Button>
-                        )}
-                    </div>
+                    {/* User Menu */}
+                    <UserMenu />
                 </div>
             </div>
         </header>
@@ -91,20 +68,20 @@ interface SimpleHeaderProps {
 
 export function SimpleHeader({ title, backHref, rightAction }: SimpleHeaderProps) {
     return (
-        <header className="sticky top-0 z-30 bg-background-primary/80 backdrop-blur-xl border-b border-surface-border">
+        <header className="sticky top-0 z-30 bg-background/80 backdrop-blur-xl border-b border-surface-border">
             <div className="flex items-center justify-between h-14 px-4">
                 <div className="flex items-center gap-3">
                     {backHref && (
                         <Link
                             href={backHref}
-                            className="p-2 -ml-2 rounded-lg hover:bg-surface-hover text-text-secondary transition-colors"
+                            className="p-2 -ml-2 rounded-lg hover:bg-surface-hover text-muted-foreground transition-colors"
                         >
                             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                             </svg>
                         </Link>
                     )}
-                    <h1 className="text-lg font-semibold text-text-primary">{title}</h1>
+                    <h1 className="text-lg font-semibold text-foreground">{title}</h1>
                 </div>
                 {rightAction}
             </div>

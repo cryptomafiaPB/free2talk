@@ -78,6 +78,12 @@ export const CACHE_KEYS = {
     USER_SESSION: (userId: string) => `session:${userId}`,
     REFRESH_TOKEN: (token: string) => `refresh:${token}`,
     USER_REFRESH_TOKEN: (userId: string) => `user:refresh:${userId}`, // Maps userId to current refresh token
+    // Random Call Keys
+    RANDOM_QUEUE_GLOBAL: 'random:queue:global',
+    RANDOM_QUEUE_LANGUAGE: (lang: string) => `random:queue:lang:${lang.toLowerCase()}`,
+    RANDOM_USER_CALL: (userId: string) => `random:user_call:${userId}`,
+    RANDOM_ACTIVE_CALLS: 'random:active_calls',
+    RANDOM_STATS: 'random:stats',
 } as const;
 
 // Cache TTL values (in seconds)

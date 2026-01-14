@@ -1,21 +1,42 @@
+/**
+ * User Routes
+ * 
+ * Routes for user profile management.
+ */
+
 import { Router } from 'express';
-import {
-    getUserProfile,
-    listUsers,
-    updateUserProfile,
-    deleteUser
-} from '../controllers/user.controller';
+import * as userController from '../controllers/user.controller.js';
+import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth.middleware.js';
 
 export const userRouter = Router();
 
-// List all users (public info)
-userRouter.get('/', listUsers);
+// ==================== Authenticated Routes ====================
 
-// Get user profile by ID
-userRouter.get('/:id', getUserProfile);
+// Get current user's profile (requires auth)
+userRouter.get('/me', authMiddleware, userController.getMyProfile);
 
-// Update user profile (self only)
-userRouter.put('/:id', updateUserProfile);
+// Update current user's profile
+userRouter.patch('/me', authMiddleware, userController.updateMyProfile);
 
-// Delete user (self only)
-userRouter.delete('/:id', deleteUser);
+// Update username
+userRouter.patch('/me/username', authMiddleware, userController.updateUsername);
+
+// Get current user's activity
+userRouter.get('/me/activity', authMiddleware, userController.getMyActivity);
+
+// Get current user's rooms
+userRouter.get('/me/rooms', authMiddleware, userController.getMyRooms);
+
+// Get current user's stats
+userRouter.get('/me/stats', authMiddleware, userController.getMyStats);
+
+// ==================== Public Routes ====================
+
+// Check username availability (optional auth for excluding own username)
+userRouter.get('/check-username/:username', optionalAuthMiddleware, userController.checkUsername);
+
+// Get user by username (public)
+userRouter.get('/username/:username', userController.getUserByUsername);
+
+// Get user by ID (public)
+userRouter.get('/:id', userController.getUserProfile);

@@ -15,6 +15,7 @@ const badgeVariants = cva(
                 error: 'bg-status-error/20 text-status-error border border-status-error/30',
                 info: 'bg-status-info/20 text-status-info border border-status-info/30',
                 outline: 'border border-surface-border text-text-secondary bg-transparent',
+                ghost: 'bg-surface-hover/50 text-text-secondary border border-transparent hover:bg-surface-hover',
             },
             size: {
                 sm: 'px-2 py-0.5 text-[10px]',

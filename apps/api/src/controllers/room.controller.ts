@@ -282,17 +282,43 @@ export async function transferOwnership(req: Request, res: Response, next: NextF
             return next(new AppError('Authentication required', 401));
         }
 
-        await roomService.transferOwnership(roomId, currentOwnerId, newOwnerId);
+        const result = await roomService.transferOwnership(roomId, currentOwnerId, newOwnerId);
 
-        // Broadcast ownership change
+        // Broadcast ownership change with full participant updates
         const io = getSocketInstance();
         if (io) {
+            console.log(`[Controller] Broadcasting ownership change for room ${roomId}`);
+
+            // Emit owner-changed event
             io.to(`room:${roomId}`).emit('room:owner-changed', newOwnerId);
+
+            // Also broadcast updated participant list for full UI sync
+            const participants = await roomService.getRoomParticipants(roomId);
+            const participantList = participants.map(p => ({
+                id: p.id,
+                userId: p.userId || p.oderId,
+                oderId: p.userId || p.oderId,
+                username: p.username,
+                displayName: p.displayName || undefined,
+                avatarUrl: p.avatarUrl || undefined,
+                role: p.role,
+                isMuted: true,
+                isSpeaking: false,
+                joinedAt: p.joinedAt,
+            }));
+
+            (io.to(`room:${roomId}`) as any).emit('room:participants-updated', {
+                participants: participantList,
+                reason: 'ownership-transferred',
+            });
+
+            console.log(`[Controller] Ownership transfer broadcast complete - New owner: ${newOwnerId}`);
         }
 
         res.json({
             success: true,
             message: 'Ownership transferred successfully',
+            data: result,
         });
     } catch (error) {
         next(error);

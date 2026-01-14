@@ -15,6 +15,7 @@ import {
     ChevronDown,
 } from '@/components/ui/icons';
 import { cn } from '@/lib/design-system';
+import { api } from '@/lib/api';
 
 const availableLanguages = [
     'English', 'Spanish', 'French', 'German', 'Japanese',
@@ -80,12 +81,32 @@ export function CreateRoomContent() {
         if (!validate()) return;
 
         setIsSubmitting(true);
+        setErrors({});
 
-        // Simulate API call
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        try {
+            // Call API to create room
+            const response = await api.post('/rooms', {
+                name: formData.name,
+                topic: formData.topic || null,
+                languages: formData.languages,
+                maxParticipants: formData.maxParticipants,
+            });
 
-        // Redirect to the room (mock ID for now)
-        router.push('/rooms/new-room-id');
+            const roomId = response.data.data?.id || response.data.id;
+
+            if (!roomId) {
+                throw new Error('No room ID returned from API');
+            }
+
+            // Redirect to the created room
+            router.push(`/rooms/${roomId}`);
+        } catch (error: any) {
+            console.error('Failed to create room:', error);
+            setErrors({
+                submit: error.response?.data?.message || error.message || 'Failed to create room. Please try again.',
+            });
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -211,6 +232,13 @@ export function CreateRoomContent() {
                     </div>
                 </div>
             </Card>
+
+            {/* Submit Error */}
+            {errors.submit && (
+                <div className="p-3 rounded-lg bg-status-error/10 border border-status-error/20">
+                    <p className="text-sm text-status-error">{errors.submit}</p>
+                </div>
+            )}
 
             {/* Submit */}
             <Button
