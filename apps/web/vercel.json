@@ -1,7 +1,10 @@
 {
     "version": 2,
-    "buildCommand": "pnpm build:web",
+    "buildCommand": "cd ../.. && pnpm build:web",
     "outputDirectory": "apps/web/.next",
     "framework": "nextjs",
-    "installCommand": "pnpm install --filter=@free2talk/web --filter=@free2talk/shared"
+    "installCommand": "cd ../.. && pnpm install --filter=@free2talk/web --filter=@free2talk/shared",
+    "env": {
+        "PNPM_IGNORE_SCRIPTS": "true"
+    }
 }
