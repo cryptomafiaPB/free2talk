@@ -1,7 +1,7 @@
 {
     "version": 2,
-    "buildCommand": "cd ../.. && pnpm install --filter=@free2talk/web --filter=@free2talk/shared --frozen-lockfile && pnpm build:web",
+    "buildCommand": "pnpm build:web",
     "outputDirectory": "apps/web/.next",
     "framework": "nextjs",
-    "installCommand": "echo 'Skipping auto-install'"
+    "installCommand": "pnpm install --filter=@free2talk/web --filter=@free2talk/shared"
 }
