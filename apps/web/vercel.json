@@ -1,7 +1,7 @@
 {
     "version": 2,
-    "buildCommand": "cd ../.. && pnpm install && pnpm build:web",
+    "buildCommand": "cd ../.. && pnpm install --filter=@free2talk/web... && pnpm build:web",
     "outputDirectory": "apps/web/.next",
-    "installCommand": "pnpm install",
+    "installCommand": "pnpm install --filter=@free2talk/web...",
     "framework": "nextjs"
 }
