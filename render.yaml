@@ -1,0 +1,45 @@
+services:
+  - type: web
+    name: free2talk-api
+    env: node
+    region: singapore
+    plan: free
+    buildCommand: pnpm install && pnpm build:api
+    startCommand: pnpm start:api
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        sync: false
+      - key: REDIS_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_EXPIRES_IN
+        value: 15m
+      - key: REFRESH_TOKEN_EXPIRES_IN
+        value: 7d
+      - key: CORS_ORIGIN
+        value: https://freetotalk.vercel.app
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: MEDIASOUP_WORKERS
+        value: 3
+      - key: MEDIASOUP_LISTEN_IP
+        value: 0.0.0.0
+      - key: MEDIASOUP_ANNOUNCED_IP
+        value: 0.0.0.0
+      - key: MEDIASOUP_RTC_MIN_PORT
+        value: 10000
+      - key: MEDIASOUP_RTC_MAX_PORT
+        value: 10100
