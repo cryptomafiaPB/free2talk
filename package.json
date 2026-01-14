@@ -22,7 +22,6 @@
         "db:push": "cd apps/api && pnpm db:push"
     },
     "devDependencies": {
-        "turbo": "^2.3.0",
         "typescript": "^5.7.2"
     },
     "engines": {
@@ -31,6 +30,7 @@
     },
     "packageManager": "pnpm@9.15.0",
     "dependencies": {
-        "zustand": "^5.0.2"
+        "zustand": "^5.0.2",
+        "turbo": "^2.3.0"
     }
 }
