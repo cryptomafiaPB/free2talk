@@ -17,7 +17,8 @@ const httpServer = createServer(app);
 // Initialize Socket.io
 const io = new Server(httpServer, {
     cors: {
-        origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+        // origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+        origin: 'https://freetotalk.vercel.app',
         credentials: true,
     },
     transports: ['websocket', 'polling'],
