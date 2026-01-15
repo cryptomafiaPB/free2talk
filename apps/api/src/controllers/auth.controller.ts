@@ -17,8 +17,12 @@ export async function registerController(req: Request, res: Response, next: Func
         // Validate input
         const validatedData = registerSchema.safeParse(req.body);
 
+        if (!validatedData.success) {
+            return next(new AppError('Invalid input: ' + JSON.stringify(validatedData.error.format()), 400));
+        }
+
         // Register user
-        const result = await registerService(validatedData);
+        const result = await registerService(validatedData.data);
 
         // Set refresh token in httpOnly cookie
         res.cookie('refreshToken', result.tokens.refreshToken, {
@@ -46,7 +50,11 @@ export async function loginController(req: Request, res: Response, next: Functio
     try {
         const validation = loginSchema.safeParse(req.body);
 
-        const result = await loginService(validation);
+        if (!validation.success) {
+            return next(new AppError('Invalid input: ' + JSON.stringify(validation.error.format()), 400));
+        }
+
+        const result = await loginService(validation.data);
 
         // Set cookies
         res.cookie('refreshToken', result.tokens.refreshToken, {

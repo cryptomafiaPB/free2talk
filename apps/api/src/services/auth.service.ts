@@ -9,13 +9,13 @@ import { SessionCache, UserCache } from './cache.service';
 import { CACHE_TTL } from "../db/redis";
 
 
-export async function registerService(data: ReturnType<typeof registerSchema.safeParse>) {
+export async function registerService(data: { email: string; username: string; password: string }) {
     try {
         // Check if user already exists
         const existingUser = await db.query.users.findFirst({
             where: or(
-                eq(users.email, data.data!.email),
-                eq(users.username, data.data!.username)
+                eq(users.email, data.email),
+                eq(users.username, data.username)
             )
         });
 
@@ -24,13 +24,13 @@ export async function registerService(data: ReturnType<typeof registerSchema.saf
         }
 
         // Hash password
-        const hashedPassword = await hashPassword(data.data!.password);
+        const hashedPassword = await hashPassword(data.password);
         // Create user
         const [user] = await db
             .insert(users)
             .values({
-                email: data.data!.email,
-                username: data.data!.username,
+                email: data.email,
+                username: data.username,
                 passwordHash: hashedPassword
             })
             .returning();
@@ -74,11 +74,11 @@ export async function registerService(data: ReturnType<typeof registerSchema.saf
     }
 }
 
-export async function loginService(data: ReturnType<typeof loginSchema.safeParse>) {
+export async function loginService(data: { email: string; password: string }) {
     try {
         // Find user in DB
         const user = await db.query.users.findFirst({
-            where: eq(users.email, data.data!.email)
+            where: eq(users.email, data.email)
         });
 
 
@@ -91,7 +91,7 @@ export async function loginService(data: ReturnType<typeof loginSchema.safeParse
             throw new AppError('Please sign in with Google instead', 401);
         }
 
-        const isPasswordValid = await verifyPassword(data.data!.password, user.passwordHash);
+        const isPasswordValid = await verifyPassword(data.password, user.passwordHash);
 
         if (!isPasswordValid) {
             throw new AppError('Invalid email or password', 401);
