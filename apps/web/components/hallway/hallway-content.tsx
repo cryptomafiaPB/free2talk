@@ -79,35 +79,45 @@ export function HallwayContent() {
 
     // Fetch function for infinite scroll
     const fetchRooms = useCallback(async (page: number) => {
-        const params = new URLSearchParams({
-            page: String(page),
-            limit: String(PAGE_SIZE),
-        });
-        if (selectedLanguage) {
-            params.set('language', selectedLanguage);
+        try {
+            const params = new URLSearchParams({
+                page: String(page),
+                limit: String(PAGE_SIZE),
+            });
+            if (selectedLanguage) {
+                params.set('language', selectedLanguage);
+            }
+
+            const response = await api.get(`/rooms?${params}`);
+            const data = response.data.data;
+
+            // Transform API response to our format
+            const rooms: RoomListItem[] = data.rooms.map((room: ApiRoom) => ({
+                id: room.id,
+                name: room.name,
+                topic: room.topic,
+                languages: room.languages || [],
+                participantCount: room.participantCount,
+                maxParticipants: room.maxParticipants,
+                owner: room.owner,
+                participants: [], // Will be populated by real-time updates
+                isLive: room.isActive,
+            }));
+
+            return {
+                data: rooms,
+                hasMore: page < data.totalPages,
+                total: data.total,
+            };
+        } catch (error: any) {
+            console.error('[Hallway] Failed to fetch rooms:', error);
+            // Return empty data on error instead of throwing
+            return {
+                data: [],
+                hasMore: false,
+                total: 0,
+            };
         }
-
-        const response = await api.get(`/rooms?${params}`);
-        const data = response.data.data;
-
-        // Transform API response to our format
-        const rooms: RoomListItem[] = data.rooms.map((room: ApiRoom) => ({
-            id: room.id,
-            name: room.name,
-            topic: room.topic,
-            languages: room.languages || [],
-            participantCount: room.participantCount,
-            maxParticipants: room.maxParticipants,
-            owner: room.owner,
-            participants: [], // Will be populated by real-time updates
-            isLive: room.isActive,
-        }));
-
-        return {
-            data: rooms,
-            hasMore: page < data.totalPages,
-            total: data.total,
-        };
     }, [selectedLanguage]);
 
     // Infinite scroll hook

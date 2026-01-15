@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useCallback, useState } from 'react';
-import { getSocket, onSocketStateChange, getConnectionState, updateSocketAuth } from '@/lib/socket';
+import { getSocket, onSocketStateChange, getConnectionState, updateSocketAuth, connectSocketUnauthenticated } from '@/lib/socket';
 import { useAuthStore, selectAccessToken, selectIsInitialized } from '@/lib/stores';
 import type { Socket } from 'socket.io-client';
 import type { ServerToClientEvents, ClientToServerEvents } from '@free2talk/shared';
@@ -115,22 +115,38 @@ export function useHallwaySocket({
         let cleanup: (() => void) | undefined;
         let isMounted = true;
 
-        // Ensure socket has the latest token and is connecting
-        const connectAndSubscribe = async (token: string) => {
-            if (!token) return;
-
+        // Subscribe to hallway for everyone, authenticated or not
+        const connectAndSubscribe = async (token?: string) => {
             if (!socket.connected) {
-                console.log('[Hallway] Socket not connected, connecting with token...');
+                console.log('[Hallway] Socket not connected, connecting...');
                 try {
-                    await updateSocketAuth(token);
+                    // Connect with token if available, otherwise connect without auth
+                    if (token) {
+                        console.log('[Hallway] Connecting with authentication token');
+                        await updateSocketAuth(token);
+                    } else {
+                        console.log('[Hallway] Connecting without authentication (unauthenticated user)');
+                        // Try to connect without auth, but don't fail if it times out
+                        try {
+                            await connectSocketUnauthenticated();
+                        } catch (err) {
+                            console.warn('[Hallway] Unauthenticated connection failed, will retry:', err);
+                            // Continue anyway - socket will keep retrying
+                        }
+                    }
                     if (isMounted && !hasSubscribedRef.current) {
                         cleanup = subscribe();
                     }
                 } catch (err) {
                     console.error('[Hallway] Failed to connect socket:', err);
+                    // Still try to subscribe in case socket is partially connected
+                    if (isMounted && !hasSubscribedRef.current) {
+                        cleanup = subscribe();
+                    }
                 }
             } else {
                 // Already connected, just subscribe
+                console.log('[Hallway] Socket already connected, subscribing...');
                 cleanup = subscribe();
             }
         };
@@ -157,18 +173,19 @@ export function useHallwaySocket({
             const waitMs = 500;
 
             let token = accessToken;
-            for (let attempt = 1; attempt <= maxAttempts && !token; attempt++) {
-                console.log(`[Hallway] No access token, waiting for refresh (attempt ${attempt}/${maxAttempts})...`);
-                await new Promise((resolve) => setTimeout(resolve, waitMs));
-                token = useAuthStore.getState().accessToken;
+            // Wait for token if auth is initialized but token is still loading
+            if (isAuthInitialized && !token) {
+                for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                    console.log(`[Hallway] Waiting for access token (attempt ${attempt}/${maxAttempts})...`);
+                    await new Promise((resolve) => setTimeout(resolve, waitMs));
+                    token = useAuthStore.getState().accessToken;
+                    if (token) break;
+                }
             }
 
-            if (!token) {
-                console.log('[Hallway] Still no access token after wait window, skipping subscription');
-                return;
-            }
-
-            await connectAndSubscribe(token);
+            // Subscribe to hallway whether authenticated or not
+            console.log(`[Hallway] Subscribing to hallway (authenticated: ${!!token})`);
+            await connectAndSubscribe(token || undefined);
         })();
 
         return () => {
@@ -178,7 +195,7 @@ export function useHallwaySocket({
             cleanup?.();
             hasSubscribedRef.current = false;
         };
-    }, [accessToken, isAuthInitialized, subscribe]);
+    }, [accessToken, isAuthInitialized, subscribe])
 
     return {
         isSubscribed,

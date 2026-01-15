@@ -36,7 +36,7 @@ export function initSocketHandlers(
     // Initialize random call background processes
     initRandomCallHandlers(io);
 
-    // Authentication middleware
+    // Authentication middleware - optional for hallway viewing
     io.use(async (socket: AuthSocket, next) => {
         const socketId = socket.id;
         const clientIp = socket.handshake.address;
@@ -46,17 +46,20 @@ export function initSocketHandlers(
         try {
             const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.split(' ')[1];
 
+            // Authentication is optional - allow unauthenticated users for hallway viewing
             if (!token) {
-                console.warn(`[Socket Auth] FAILED - No token provided - Socket: ${socketId}`);
-                const err = new SocketAuthError('Authentication token missing', 'TOKEN_MISSING');
-                (err as any).data = { code: 'TOKEN_MISSING' };
-                return next(err);
+                console.log(`[Socket Auth] UNAUTHENTICATED - Socket: ${socketId} (allowed for hallway viewing)`);
+                socket.userId = undefined; // Mark as unauthenticated
+                return next();
             }
 
-            // Verify token
+            // If token is provided, verify it
             let payload;
             try {
                 payload = verifyAccessToken(token);
+                socket.userId = payload.userId;
+                console.log(`[Socket Auth] SUCCESS - Socket: ${socketId}, User: ${payload.userId}`);
+                next();
             } catch (tokenError: any) {
                 const isExpired = tokenError.name === 'TokenExpiredError';
                 const errorCode = isExpired ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID';
@@ -64,29 +67,34 @@ export function initSocketHandlers(
 
                 console.warn(`[Socket Auth] FAILED - ${message} - Socket: ${socketId}, Error: ${tokenError.message}`);
 
-                const err = new SocketAuthError(message, errorCode);
-                (err as any).data = { code: errorCode };
-                return next(err);
+                // Even if token is invalid, allow connection for hallway viewing
+                console.log(`[Socket Auth] Allowing connection despite token error - Socket: ${socketId}`);
+                socket.userId = undefined; // Mark as unauthenticated
+                next();
             }
-
-            socket.userId = payload.userId;
-            console.log(`[Socket Auth] SUCCESS - Socket: ${socketId}, User: ${payload.userId}`);
-            next();
         } catch (error: any) {
             console.error(`[Socket Auth] FAILED - Unexpected error - Socket: ${socketId}`, error);
-            const err = new SocketAuthError('Authentication failed', 'AUTH_ERROR');
-            (err as any).data = { code: 'AUTH_ERROR' };
-            next(err);
+            // Allow connection even on unexpected errors (fail safe)
+            socket.userId = undefined;
+            next();
         }
     });
 
     io.on('connection', (socket: AuthSocket) => {
-        const userId = socket.userId!;
-        console.log(`Client connected: ${socket.id} (User: ${userId})`);
+        const userId = socket.userId;
+        const isAuthenticated = !!userId;
 
-        // Track connection (synchronous)
-        userSockets.set(userId, socket.id);
-        socketUsers.set(socket.id, userId);
+        if (isAuthenticated) {
+            console.log(`Client connected: ${socket.id} (User: ${userId})`);
+        } else {
+            console.log(`Client connected: ${socket.id} (Unauthenticated - Hallway only)`);
+        }
+
+        // Track connection (synchronous) - only for authenticated users
+        if (isAuthenticated) {
+            userSockets.set(userId, socket.id);
+            socketUsers.set(socket.id, userId);
+        }
 
         // Debug: Log all events received
         socket.onAny((event, ...args) => {
@@ -99,18 +107,24 @@ export function initSocketHandlers(
         // and before the client can send events
 
         // ==================== Random Call Events ====================
-        registerRandomCallEvents(io, socket);
+        // Only register for authenticated users
+        if (isAuthenticated) {
+            registerRandomCallEvents(io, socket);
+        }
 
         // ==================== Hallway Events ====================
+        // Available for both authenticated and unauthenticated users
 
         socket.on('hallway:subscribe', async () => {
             socket.join('hallway');
-            console.log(`User ${userId} subscribed to hallway`);
+            const userLabel = isAuthenticated ? `User ${userId}` : `Guest ${socket.id}`;
+            console.log(`${userLabel} subscribed to hallway`);
         });
 
         socket.on('hallway:unsubscribe', () => {
             socket.leave('hallway');
-            console.log(`User ${userId} unsubscribed from hallway`);
+            const userLabel = isAuthenticated ? `User ${userId}` : `Guest ${socket.id}`;
+            console.log(`${userLabel} unsubscribed from hallway`);
         });
 
         // ==================== Room Events ====================
@@ -127,6 +141,14 @@ export function initSocketHandlers(
          * 7. Update hallway with new participant count
          */
         socket.on('room:join', async (roomId, callback) => {
+            // Only authenticated users can join rooms
+            if (!isAuthenticated) {
+                console.log(`[RoomJoin] REJECTED - Unauthenticated user cannot join room ${roomId}`);
+                socket.emit('error', { code: 'UNAUTHORIZED', message: 'Authentication required' });
+                if (callback) callback({ success: false, error: 'Authentication required' });
+                return;
+            }
+
             console.log(`[RoomJoin] User ${userId} joining room ${roomId}`);
             console.log(`[RoomJoin] Socket ID: ${socket.id}`);
 
@@ -273,6 +295,12 @@ export function initSocketHandlers(
          * Also rejoins the socket to the room channel (important after reconnection!)
          */
         socket.on('room:sync', async (roomId, callback) => {
+            // Only authenticated users
+            if (!isAuthenticated) {
+                if (callback) callback({ success: false, error: 'Authentication required' });
+                return;
+            }
+
             console.log(`[RoomSync] User ${userId} requesting sync for room ${roomId}`);
             console.log(`[RoomSync] Socket ID: ${socket.id}`);
 
@@ -328,6 +356,12 @@ export function initSocketHandlers(
         });
 
         socket.on('room:leave', async (roomId: string, callback?: (response: { success: boolean }) => void) => {
+            // Only authenticated users
+            if (!isAuthenticated) {
+                if (callback) callback({ success: false });
+                return;
+            }
+
             console.log(`[RoomLeave] User ${userId} leaving room ${roomId}`);
 
             try {
@@ -391,6 +425,11 @@ export function initSocketHandlers(
         });
 
         socket.on('room:mute', async (muted: boolean) => {
+            // Only authenticated users
+            if (!isAuthenticated) {
+                return;
+            }
+
             try {
                 if (!socket.roomId) {
                     return;
@@ -410,6 +449,10 @@ export function initSocketHandlers(
         // ==================== Voice (mediasoup) Events ====================
 
         socket.on('voice:get-rtp-capabilities', async (callback) => {
+            if (!isAuthenticated) {
+                callback(null as any);
+                return;
+            }
             try {
                 if (!socket.roomId) {
                     callback(null as any);
@@ -425,6 +468,10 @@ export function initSocketHandlers(
         });
 
         socket.on('voice:create-transport', async (direction, callback) => {
+            if (!isAuthenticated) {
+                callback(null as any);
+                return;
+            }
             try {
                 if (!socket.roomId) {
                     callback(null as any);
@@ -444,6 +491,10 @@ export function initSocketHandlers(
         });
 
         socket.on('voice:connect-transport', async (transportId, dtlsParameters, callback) => {
+            if (!isAuthenticated) {
+                callback?.();
+                return;
+            }
             try {
                 if (!socket.roomId) {
                     callback();
@@ -464,6 +515,10 @@ export function initSocketHandlers(
         });
 
         socket.on('voice:produce', async (transportId, rtpParameters, callback) => {
+            if (!isAuthenticated) {
+                callback(null as any);
+                return;
+            }
             try {
                 if (!socket.roomId) {
                     callback('' as any);
@@ -491,16 +546,19 @@ export function initSocketHandlers(
             }
         });
 
-        socket.on('voice:consume', async (producerId, callback) => {
+        socket.on('voice:consume', async (producerId, rtpCapabilities, callback) => {
+            if (!isAuthenticated) {
+                callback(null as any);
+                return;
+            }
             try {
                 if (!socket.roomId) {
                     callback(null as any);
                     return;
                 }
 
-                // Get the router's RTP capabilities (needed for consume)
-                const rtpCapabilities = await voiceService.getRtpCapabilities(socket.roomId);
-
+                // Use client's device RTP capabilities (sent from client)
+                // This is required to check if client can consume this producer
                 const consumerParams = await voiceService.consume(
                     socket.roomId,
                     userId,
@@ -537,56 +595,63 @@ export function initSocketHandlers(
         // ==================== Disconnect ====================
 
         socket.on('disconnect', async () => {
-            console.log(`Client disconnected: ${socket.id} (User: ${userId})`);
+            const disconnectLabel = isAuthenticated ? `User: ${userId}` : `Guest: ${socket.id}`;
+            console.log(`Client disconnected: ${socket.id} (${disconnectLabel})`);
 
-            // Cleanup tracking
-            userSockets.delete(userId);
-            socketUsers.delete(socket.id);
+            // Only cleanup authenticated users
+            if (isAuthenticated) {
+                // Cleanup tracking
+                userSockets.delete(userId);
+                socketUsers.delete(socket.id);
 
-            // Update user online status (DB + Redis)
-            await db.update(users).set({ isOnline: false, lastSeenAt: new Date() }).where(eq(users.id, userId));
-            await UserCache.setOffline(userId);
+                // Update user online status (DB + Redis)
+                await db.update(users).set({ isOnline: false, lastSeenAt: new Date() }).where(eq(users.id, userId));
+                await UserCache.setOffline(userId);
 
-            // Cleanup voice resources and leave room if in one
-            if (socket.roomId) {
-                const roomId = socket.roomId;
-                try {
-                    // Cleanup voice resources first
-                    await voiceService.cleanupParticipant(roomId, userId);
+                // Cleanup voice resources and leave room if in one
+                if (socket.roomId) {
+                    const roomId = socket.roomId;
+                    try {
+                        // Cleanup voice resources first
+                        await voiceService.cleanupParticipant(roomId, userId);
 
-                    // Notify others that user left
-                    socket.to(`room:${roomId}`).emit('room:user-left', userId);
+                        // Notify others that user left
+                        socket.to(`room:${roomId}`).emit('room:user-left', userId);
 
-                    // Leave the room (this handles ownership transfer and room closure)
-                    const { roomClosed } = await roomService.leaveRoom(roomId, userId);
+                        // Leave the room (this handles ownership transfer and room closure)
+                        const { roomClosed } = await roomService.leaveRoom(roomId, userId);
 
-                    if (roomClosed) {
-                        // Notify hallway that room was closed
-                        io.to('hallway').emit('hallway:room-closed', roomId);
-                        console.log(`Room ${roomId} closed - owner left and no participants remaining`);
-                    } else {
-                        // Check if ownership was transferred
-                        const room = await roomService.getRoomById(roomId);
-                        if (room.ownerId !== userId) {
-                            io.to(`room:${roomId}`).emit('room:owner-changed', room.ownerId);
+                        if (roomClosed) {
+                            // Notify hallway that room was closed
+                            io.to('hallway').emit('hallway:room-closed', roomId);
+                            console.log(`Room ${roomId} closed - owner left and no participants remaining`);
+                        } else {
+                            // Check if ownership was transferred
+                            const room = await roomService.getRoomById(roomId);
+                            if (room.ownerId !== userId) {
+                                io.to(`room:${roomId}`).emit('room:owner-changed', room.ownerId);
+                            }
                         }
+                    } catch (error) {
+                        console.error('Error during disconnect cleanup:', error);
                     }
-                } catch (error) {
-                    console.error('Error during disconnect cleanup:', error);
                 }
             }
         });
 
         // ==================== Async Initialization (runs after all handlers are registered) ====================
         // Update user online status in background - don't block event handling
-        (async () => {
-            try {
-                await db.update(users).set({ isOnline: true }).where(eq(users.id, userId));
-                await UserCache.setOnline(userId);
-            } catch (error) {
-                console.error('Error updating user online status:', error);
-            }
-        })();
+        // Only for authenticated users
+        if (isAuthenticated) {
+            (async () => {
+                try {
+                    await db.update(users).set({ isOnline: true }).where(eq(users.id, userId));
+                    await UserCache.setOnline(userId);
+                } catch (error) {
+                    console.error('Error updating user online status:', error);
+                }
+            })();
+        }
     });
 }
 

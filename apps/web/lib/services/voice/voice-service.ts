@@ -721,12 +721,20 @@ export class VoiceService extends EventEmitter<VoiceServiceEvents> {
                 return;
             }
 
+            // Get device RTP capabilities - required for server to check compatibility
+            if (!this.device || !this.device.rtpCapabilities) {
+                this.log('Cannot get consumer params: device not loaded');
+                resolve(null);
+                return;
+            }
+
             const timeout = setTimeout(() => {
                 this.log('Timeout getting consumer params');
                 resolve(null);
             }, 10000);
 
-            this.socket.emit('voice:consume', producerId, (params) => {
+            // Send both producerId AND our device's RTP capabilities
+            this.socket.emit('voice:consume', producerId, this.device.rtpCapabilities, (params) => {
                 clearTimeout(timeout);
                 resolve(params);
             });

@@ -26,7 +26,7 @@ export async function registerService(data: { email: string; username: string; p
         // Hash password
         const hashedPassword = await hashPassword(data.password);
         // Create user
-        const [user] = await db
+        const createdUsers = await db
             .insert(users)
             .values({
                 email: data.email,
@@ -35,25 +35,31 @@ export async function registerService(data: { email: string; username: string; p
             })
             .returning();
 
+        if (!createdUsers || createdUsers.length === 0) {
+            throw new AppError('Failed to create user', 500);
+        }
+
+        const user = createdUsers[0];
+
         // Generate tokens
         const tokenPayload: TokenPayload = {
-            userId: String(user!.id),
-            email: user!.email,
-            username: user!.username
+            userId: String(user.id),
+            email: user.email,
+            username: user.username
         };
 
         const tokens = generateTokenPair(tokenPayload);
 
-        // Store refresh token in Redis
-        await SessionCache.storeRefreshToken(user.id, tokens.refreshToken, CACHE_TTL.SESSION);
+        // Store refresh token in Redis (convert UUID to string)
+        await SessionCache.storeRefreshToken(String(user.id), tokens.refreshToken, CACHE_TTL.SESSION);
 
         // Update online status
         await db.update(users)
             .set({ isOnline: true })
             .where(eq(users.id, user.id));
 
-        // Set online in Redis
-        await UserCache.setOnline(user.id);
+        // Set online in Redis (convert UUID to string)
+        await UserCache.setOnline(String(user.id));
 
         return {
             user: {
@@ -70,7 +76,12 @@ export async function registerService(data: { email: string; username: string; p
         }
 
     } catch (error) {
-        throw error;
+        if (error instanceof AppError) {
+            throw error;
+        }
+        // Log unexpected errors
+        console.error('[Registration Error]', error);
+        throw new AppError('Failed to register user. Please try again later.', 500);
     }
 }
 
@@ -106,16 +117,16 @@ export async function loginService(data: { email: string; password: string }) {
 
         const tokens: TokenPair = generateTokenPair(tokenPayload);
 
-        // Store refresh token in Redis
-        await SessionCache.storeRefreshToken(user.id, tokens.refreshToken, CACHE_TTL.SESSION);
+        // Store refresh token in Redis (convert UUID to string)
+        await SessionCache.storeRefreshToken(String(user.id), tokens.refreshToken, CACHE_TTL.SESSION);
 
         // Update online status
         await db.update(users)
             .set({ isOnline: true })
             .where(eq(users.id, user.id));
 
-        // Set online in Redis
-        await UserCache.setOnline(user.id);
+        // Set online in Redis (convert UUID to string)
+        await UserCache.setOnline(String(user.id));
 
 
         return {

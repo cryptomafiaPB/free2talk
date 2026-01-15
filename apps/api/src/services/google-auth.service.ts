@@ -238,15 +238,16 @@ export async function googleAuthService(idToken?: string, accessToken?: string) 
 
     const tokens = generateTokenPair(tokenPayload);
 
-    // Store refresh token in Redis
-    await SessionCache.storeRefreshToken(user.id, tokens.refreshToken, CACHE_TTL.SESSION);
+    // Store refresh token in Redis (convert UUID to string)
+    await SessionCache.storeRefreshToken(String(user.id), tokens.refreshToken, CACHE_TTL.SESSION);
 
     // Update online status
     await db.update(users)
         .set({ isOnline: true })
         .where(eq(users.id, user.id));
 
-    await UserCache.setOnline(user.id);
+    // Set online in Redis (convert UUID to string)
+    await UserCache.setOnline(String(user.id));
 
     return {
         user: {

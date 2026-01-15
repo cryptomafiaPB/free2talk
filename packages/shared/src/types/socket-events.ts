@@ -57,6 +57,7 @@ export interface ClientToServerEvents extends RandomClientToServerEvents {
     ) => void;
     'voice:consume': (
         producerId: string,
+        rtpCapabilities: RtpCapabilities,
         callback: (params: ConsumerParams | null) => void
     ) => void;
 }

@@ -251,6 +251,69 @@ export function getSocket(): Socket<ServerToClientEvents, ClientToServerEvents> 
     return socket;
 }
 
+/**
+ * Connect socket without authentication (for unauthenticated hallway viewing)
+ * Returns a promise that resolves when the socket is connected.
+ */
+export async function connectSocketUnauthenticated(): Promise<Socket<ServerToClientEvents, ClientToServerEvents>> {
+    const sock = getSocket();
+
+    if (sock.connected) {
+        console.log('[Socket] Already connected, no need to reconnect');
+        return sock;
+    }
+
+    console.log('[Socket] Connecting without authentication (hallway viewing)...');
+    setConnectionState('connecting');
+
+    return new Promise((resolve, reject) => {
+        let resolved = false;
+
+        const cleanup = () => {
+            sock.off('connect', onConnect);
+            sock.off('connect_error', onConnectError);
+        };
+
+        const onConnect = () => {
+            if (!resolved) {
+                resolved = true;
+                cleanup();
+                console.log('[Socket] Connected without authentication:', sock.id);
+                setConnectionState('connected');
+                resolve(sock);
+            }
+        };
+
+        const onConnectError = (err: Error) => {
+            console.error('[Socket] Unauthenticated connection error:', err);
+            // Don't reject immediately - let socket.io retry automatically
+            // Just log the error
+        };
+
+        sock.on('connect', onConnect);
+        sock.on('connect_error', onConnectError);
+
+        // Set auth to empty for unauthenticated connection
+        sock.auth = { token: '' };
+        currentToken = null;
+
+        // Connect to socket
+        sock.connect();
+
+        // Timeout after 20 seconds to give socket.io more time to retry
+        const timeoutId = setTimeout(() => {
+            if (!resolved) {
+                resolved = true;
+                cleanup();
+                console.error('[Socket] Unauthenticated socket connection timeout after 20s');
+                // Don't reject - return the socket anyway so hallway can try to use it
+                // The socket may connect later or the app can handle partial functionality
+                resolve(sock);
+            }
+        }, 20000);
+    });
+}
+
 // Guard against concurrent updateSocketAuth calls
 let pendingAuthPromise: Promise<Socket<ServerToClientEvents, ClientToServerEvents>> | null = null;
 let pendingAuthToken: string | null = null;
