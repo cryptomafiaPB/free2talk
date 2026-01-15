@@ -1,5 +1,8 @@
 {
     "$schema": "https://turbo.build/schema.json",
+    "globalEnv": [
+        "PNPM_IGNORE_SCRIPTS"
+    ],
     "globalDependencies": [
         "**/.env.*local"
     ],
