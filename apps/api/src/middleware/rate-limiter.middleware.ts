@@ -27,6 +27,7 @@ export const authRateLimiter = rateLimit({
     },
     standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
     legacyHeaders: false, // Disable `X-RateLimit-*` headers
+    trustProxy: true, // Trust X-Forwarded-For header from reverse proxy
     // Skip rate limiting for successful requests (only count failed attempts)
     skip: (req, res) => res.statusCode < 400,
 });
@@ -44,6 +45,7 @@ export const roomCreationRateLimiter = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
+    trustProxy: true, // Trust X-Forwarded-For header from reverse proxy
     // Key by user ID instead of IP
     keyGenerator: (req) => {
         return req.user?.userId || req.ip || 'anonymous';
@@ -63,6 +65,11 @@ export const apiRateLimiter = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
+    trustProxy: true, // Trust X-Forwarded-For header from reverse proxy
+    skip: (req) => {
+        // Skip rate limiting for health checks and static routes
+        return req.method === 'HEAD' || req.path === '/' || req.path === '/health';
+    },
 });
 
 /**
@@ -78,4 +85,5 @@ export const strictRateLimiter = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
+    trustProxy: true, // Trust X-Forwarded-For header from reverse proxy
 });
