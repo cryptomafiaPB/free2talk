@@ -38,8 +38,10 @@ services:
       - key: MEDIASOUP_LISTEN_IP
         value: 0.0.0.0
       - key: MEDIASOUP_ANNOUNCED_IP
-        value: 0.0.0.0
+        sync: false
       - key: MEDIASOUP_RTC_MIN_PORT
         value: 10000
       - key: MEDIASOUP_RTC_MAX_PORT
         value: 10100
+      - key: MEDIASOUP_ENABLE_WEBRTC_SERVER
+        value: "true"

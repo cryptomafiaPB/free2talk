@@ -28,17 +28,29 @@ const mediaCodecs: mediasoup.types.RtpCodecCapability[] = [
     },
 ];
 
-// Transport configuration
-const webRtcTransportOptions: mediasoup.types.WebRtcTransportOptions = {
-    listenIps: [
+// Transport configuration with STUN servers for NAT traversal
+const getWebRtcTransportOptions = (): mediasoup.types.WebRtcTransportOptions => {
+    const listenIps = [
         {
             ip: config.mediasoup.listenIp,
             announcedIp: config.mediasoup.announcedIp,
         },
-    ],
-    enableUdp: true,
-    enableTcp: true,
-    preferUdp: true,
+    ];
+
+    const options: mediasoup.types.WebRtcTransportOptions = {
+        listenIps,
+        enableUdp: true,
+        enableTcp: true,
+        preferUdp: true,
+    };
+
+    // Add STUN servers for production (helps with NAT traversal)
+    if (config.nodeEnv === 'production') {
+        options.initialAvailableOutgoingBitrate = 1000000;
+        options.maxSctpMessageSize = 262144;
+    }
+
+    return options;
 };
 
 // In-memory state for rooms
@@ -142,7 +154,7 @@ export async function createTransport(
     const router = await getOrCreateRouter(roomId);
     const participant = getOrCreateParticipant(roomId, userId);
 
-    const transport = await router.createWebRtcTransport(webRtcTransportOptions);
+    const transport = await router.createWebRtcTransport(getWebRtcTransportOptions());
 
     // Store transport reference
     if (direction === 'send') {
