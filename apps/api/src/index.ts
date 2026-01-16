@@ -7,6 +7,7 @@ import { initMediasoupWorkers } from './socket/mediasoup/workers.js';
 import { setSocketInstance } from './socket/socket-instance.js';
 import { connectRedis, disconnectRedis } from './db/redis.js';
 import { cleanupStaleRooms, cleanupAbandonedRooms } from './services/room.service.js';
+import { config } from './config/env.js';
 
 const PORT = process.env.PORT || 3001;
 const ABANDONED_ROOM_CLEANUP_INTERVAL = 60 * 1000; // 1 minute
@@ -61,6 +62,10 @@ async function start() {
             }
         }, ABANDONED_ROOM_CLEANUP_INTERVAL);
         console.log('✓ Abandoned room cleanup job started');
+
+        // verify env variables
+        console.log('Mediasoup announced IP process.env:', process.env.MEDIASOUP_ANNOUNCED_IP);
+        console.log('Mediasoup announced IP used:', config.mediasoup.announcedIp)
 
         httpServer.listen(PORT, () => {
             console.log(`🚀 Server running on http://localhost:${PORT}`);

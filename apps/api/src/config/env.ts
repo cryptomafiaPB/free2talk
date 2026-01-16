@@ -22,7 +22,8 @@ export const config = {
     mediasoup: {
         workers: parseInt(process.env.MEDIASOUP_WORKERS || '3'),
         listenIp: process.env.MEDIASOUP_LISTEN_IP || '0.0.0.0',
-        announcedIp: process.env.MEDIASOUP_ANNOUNCED_IP || 'localhost',
+        // Render exposes RENDER_EXTERNAL_HOSTNAME automatically; use it as a safe fallback so we never announce localhost/0.0.0.0 in production.
+        announcedIp: process.env.MEDIASOUP_ANNOUNCED_IP || process.env.RENDER_EXTERNAL_HOSTNAME || 'free2talk-api.onrender.com',
         rtcMinPort: parseInt(process.env.MEDIASOUP_RTC_MIN_PORT || '10000'),
         rtcMaxPort: parseInt(process.env.MEDIASOUP_RTC_MAX_PORT || '10100'),
     },
