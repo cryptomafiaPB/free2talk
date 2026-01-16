@@ -172,6 +172,13 @@ export async function createTransport(
     });
 
     console.log(`Created ${direction} transport for user ${userId} in room ${roomId}`);
+    console.log(`[Transport] ICE Parameters:`, JSON.stringify(transport.iceParameters, null, 2));
+    console.log(`[Transport] ICE Candidates Available: ${transport.iceCandidates.length}`);
+    transport.iceCandidates.forEach((cand, idx) => {
+        console.log(`[Transport] Candidate ${idx}:`, JSON.stringify(cand, null, 2));
+    });
+    console.log(`[Transport] DTLS Parameters:`, JSON.stringify(transport.dtlsParameters, null, 2));
+    console.log(`[Transport] Announced IP being sent:`, transport.iceCandidates[0]?.ip || 'UNKNOWN');
 
     return {
         id: transport.id,

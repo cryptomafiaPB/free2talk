@@ -381,8 +381,35 @@ export class VoiceService extends EventEmitter<VoiceServiceEvents> {
         }
 
         if (!this.device.loaded) {
-            await this.device.load({ routerRtpCapabilities: rtpCapabilities });
-            this.log('Device loaded');
+            // CRITICAL: Add STUN servers to enable ICE candidate gathering for clients behind NAT
+            // Without STUN, clients cannot establish connectivity even with correct announced IP
+            // STUN enables reflexive address discovery; TURN provides fallback relay for restrictive networks
+            const deviceLoadOptions: any = {
+                routerRtpCapabilities: rtpCapabilities,
+            };
+
+            // Always try to add RTC configuration with STUN servers
+            // Fallback: Add multiple STUN servers for redundancy
+            if (typeof RTCPeerConnection !== 'undefined') {
+                deviceLoadOptions.rtcConfiguration = {
+                    iceServers: [
+                        // Google's public STUN servers (primary)
+                        { urls: ['stun:stun.l.google.com:19302'] },
+                        { urls: ['stun:stun1.l.google.com:19302'] },
+                        { urls: ['stun:stun2.l.google.com:19302'] },
+                        { urls: ['stun:stun3.l.google.com:19302'] },
+                        { urls: ['stun:stun4.l.google.com:19302'] },
+                        // Fallback STUN servers
+                        { urls: ['stun:stun.stunprotocol.org:3478'] },
+                        { urls: ['stun:stun.xten.com:3478'] },
+                    ],
+                    iceCandidatePoolSize: 10,
+                };
+            }
+
+            await this.device.load(deviceLoadOptions);
+            this.log('Device loaded with STUN servers for NAT traversal');
+            console.log('[VoiceService] Device RTCConfiguration:', deviceLoadOptions.rtcConfiguration ? 'CONFIGURED' : 'FALLBACK');
         }
     }
 
@@ -429,6 +456,23 @@ export class VoiceService extends EventEmitter<VoiceServiceEvents> {
         });
 
         console.log('[VoiceService] ✅ Send transport object created');
+
+        // CRITICAL DIAGNOSTIC: Log all ICE candidates from server
+        console.log('[VoiceService] ===== SEND TRANSPORT ICE CANDIDATES =====');
+        console.log('[VoiceService] Total candidates from server:', transportParams.iceCandidates.length);
+        transportParams.iceCandidates.forEach((cand, idx) => {
+            console.log(`[VoiceService] Candidate ${idx}:`, {
+                priority: cand.priority,
+                foundation: cand.foundation,
+                component: cand.component,
+                transport: cand.transport,
+                ip: cand.ip,
+                port: cand.port,
+                type: cand.type,
+                tcpType: cand.tcpType
+            });
+        });
+        console.log('[VoiceService] Server announced IP:', transportParams.iceCandidates[0]?.ip || 'UNKNOWN');
 
         // Handle transport connection
         this.sendTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {

@@ -25,10 +25,10 @@ export async function initMediasoupWorkers() {
             process.exit(1);
         });
 
-        // Enable WebRTC server with STUN servers for NAT traversal in production
+        // Enable WebRTC server for efficient connection handling in production
         if (config.nodeEnv === 'production') {
             try {
-                console.log(`[Worker ${i + 1}] Initializing WebRTC server with STUN servers...`);
+                console.log(`[Worker ${i + 1}] Initializing WebRTC server...`);
                 await worker.createWebRtcServer({
                     listenInfos: [
                         {
@@ -44,15 +44,11 @@ export async function initMediasoupWorkers() {
                             port: 0,
                         },
                     ],
-                    iceServers: [
-                        { urls: ['stun:stun.l.google.com:19302'] },
-                        { urls: ['stun:stun1.l.google.com:19302'] },
-                    ],
                 });
-                console.log(`[Worker ${i + 1}] ✅ WebRTC server initialized with STUN servers`);
+                console.log(`[Worker ${i + 1}] ✅ WebRTC server initialized`);
             } catch (error) {
                 console.error(`[Worker ${i + 1}] Failed to create WebRTC server:`, error);
-                // Non-fatal - WebRTC transports will still work, just without the server optimization
+                // Non-fatal - WebRTC transports will still work
             }
         }
 
