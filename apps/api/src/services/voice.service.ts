@@ -44,16 +44,10 @@ const getWebRtcTransportOptions = (): mediasoup.types.WebRtcTransportOptions => 
         preferUdp: true,
     };
 
-    // CRITICAL: Add STUN servers for ICE candidate gathering. Without STUN, clients behind NAT
-    // cannot establish connectivity to the server - this causes "0 bytes sent" and transport failures.
-    // Public STUN servers are used in production; private/self-hosted STUN in future.
+    // Production-specific optimizations: increase bitrate and message size for better audio quality
     if (config.nodeEnv === 'production') {
-        options.iceServers = [
-            { urls: ['stun:stun.l.google.com:19302'] },
-            { urls: ['stun:stun1.l.google.com:19302'] },
-        ];
-        options.initialAvailableOutgoingBitrate = 1000000;
-        options.maxSctpMessageSize = 262144;
+        options.initialAvailableOutgoingBitrate = 1000000; // 1 Mbps
+        options.maxSctpMessageSize = 262144; // 256KB
     }
 
     return options;

@@ -1,5 +1,6 @@
 import * as mediasoup from 'mediasoup';
 import { Worker } from 'mediasoup/types';
+import { config } from '../../config/env.js';
 
 let workers: Worker[] = [];
 let nextWorkerIndex = 0;
@@ -23,6 +24,37 @@ export async function initMediasoupWorkers() {
             console.error(`mediasoup worker ${worker.pid} died, exiting...`);
             process.exit(1);
         });
+
+        // Enable WebRTC server with STUN servers for NAT traversal in production
+        if (config.nodeEnv === 'production') {
+            try {
+                console.log(`[Worker ${i + 1}] Initializing WebRTC server with STUN servers...`);
+                await worker.createWebRtcServer({
+                    listenInfos: [
+                        {
+                            protocol: 'udp',
+                            ip: config.mediasoup.listenIp,
+                            announcedIp: config.mediasoup.announcedIp,
+                            port: 0, // Let the OS assign a port
+                        },
+                        {
+                            protocol: 'tcp',
+                            ip: config.mediasoup.listenIp,
+                            announcedIp: config.mediasoup.announcedIp,
+                            port: 0,
+                        },
+                    ],
+                    iceServers: [
+                        { urls: ['stun:stun.l.google.com:19302'] },
+                        { urls: ['stun:stun1.l.google.com:19302'] },
+                    ],
+                });
+                console.log(`[Worker ${i + 1}] ✅ WebRTC server initialized with STUN servers`);
+            } catch (error) {
+                console.error(`[Worker ${i + 1}] Failed to create WebRTC server:`, error);
+                // Non-fatal - WebRTC transports will still work, just without the server optimization
+            }
+        }
 
         workers.push(worker);
         console.log(`Worker ${i + 1} created (PID: ${worker.pid})`);
