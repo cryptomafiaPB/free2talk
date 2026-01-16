@@ -707,7 +707,7 @@ export class VoiceService extends EventEmitter<VoiceServiceEvents> {
             this.log('Producer created:', this.producer.id);
 
             // Start monitoring outgoing RTP stats to verify audio is being sent
-            // this.startSendRtpStatsMonitoring(this.producer.id);
+            this.startSendRtpStatsMonitoring(this.producer.id);
         } catch (error) {
             console.error('[VoiceService] ❌ FATAL ERROR in startProducing():', error);
             console.error('[VoiceService] Error details:', {
@@ -938,7 +938,7 @@ export class VoiceService extends EventEmitter<VoiceServiceEvents> {
             this.log('Consumer created:', consumer.id);
 
             // Start monitoring RTP stats to verify audio is actually flowing
-            // this.startRtpStatsMonitoring(consumer.id, userId, producerId);
+            this.startRtpStatsMonitoring(consumer.id, userId, producerId);
 
         } catch (error) {
             console.error('[VoiceService] ❌❌❌ FATAL ERROR in consumeProducer:', error);
@@ -1100,220 +1100,230 @@ export class VoiceService extends EventEmitter<VoiceServiceEvents> {
     /**
      * Monitor RTP stats for incoming audio to verify data is being received
      */
-    // private startRtpStatsMonitoring(consumerId: string, userId: string, producerId: string): void {
-    //     let previousStats = {
-    //         bytesReceived: 0,
-    //         packetsReceived: 0,
-    //         jitterBufferDelay: 0,
-    //         audioLevel: 0,
-    //     };
+    private startRtpStatsMonitoring(consumerId: string, userId: string, producerId: string): void {
+        let previousStats = {
+            bytesReceived: 0,
+            packetsReceived: 0,
+            jitterBufferDelay: 0,
+            audioLevel: 0,
+        };
 
-    //     let checkCount = 0;
-    //     const maxChecks = 20; // Check for 20 seconds (1 check per second)
+        let checkCount = 0;
+        const maxChecks = 20; // Check for 20 seconds (1 check per second)
 
-    //     const checkStats = async () => {
-    //         checkCount++;
+        const checkStats = async () => {
+            checkCount++;
 
-    //         try {
-    //             // Get WebRTC connection stats
-    //             const stats = await this.recvTransport.getStats();
+            try {
+                // Get WebRTC connection stats
+                if (!this.recvTransport || this.recvTransport.closed) {
+                    console.warn(`[VoiceService RTP] Recv transport not available for stats`);
+                    return;
+                }
+                const stats = await this.recvTransport.getStats();
 
-    //             let inboundRtpStats: any = null;
-    //             stats.forEach((report) => {
-    //                 if (report.type === 'inbound-rtp' && report.kind === 'audio') {
-    //                     inboundRtpStats = report;
-    //                 }
-    //             });
+                let inboundRtpStats: any = null;
+                stats.forEach((report) => {
+                    if (report.type === 'inbound-rtp' && report.kind === 'audio') {
+                        inboundRtpStats = report;
+                    }
+                });
 
-    //             if (inboundRtpStats) {
-    //                 const bytesReceived = inboundRtpStats.bytesReceived || 0;
-    //                 const packetsReceived = inboundRtpStats.packetsReceived || 0;
-    //                 const audioLevel = inboundRtpStats.audioLevel || 0;
-    //                 const jitterBufferDelay = inboundRtpStats.jitterBufferDelay || 0;
+                if (inboundRtpStats) {
+                    const bytesReceived = inboundRtpStats.bytesReceived || 0;
+                    const packetsReceived = inboundRtpStats.packetsReceived || 0;
+                    const audioLevel = inboundRtpStats.audioLevel || 0;
+                    const jitterBufferDelay = inboundRtpStats.jitterBufferDelay || 0;
 
-    //                 const bytesReceivedDelta = bytesReceived - previousStats.bytesReceived;
-    //                 const packetsReceivedDelta = packetsReceived - previousStats.packetsReceived;
+                    const bytesReceivedDelta = bytesReceived - previousStats.bytesReceived;
+                    const packetsReceivedDelta = packetsReceived - previousStats.packetsReceived;
 
-    //                 console.log(`[VoiceService RTP] Check #${checkCount} for ${userId} (Producer: ${producerId})`);
-    //                 console.log(`[VoiceService RTP] Bytes received: ${bytesReceived} (Δ ${bytesReceivedDelta})`);
-    //                 console.log(`[VoiceService RTP] Packets received: ${packetsReceived} (Δ ${packetsReceivedDelta})`);
-    //                 console.log(`[VoiceService RTP] Audio level: ${audioLevel}`);
-    //                 console.log(`[VoiceService RTP] Jitter buffer delay: ${jitterBufferDelay}ms`);
+                    console.log(`[VoiceService RTP] Check #${checkCount} for ${userId} (Producer: ${producerId})`);
+                    console.log(`[VoiceService RTP] Bytes received: ${bytesReceived} (Δ ${bytesReceivedDelta})`);
+                    console.log(`[VoiceService RTP] Packets received: ${packetsReceived} (Δ ${packetsReceivedDelta})`);
+                    console.log(`[VoiceService RTP] Audio level: ${audioLevel}`);
+                    console.log(`[VoiceService RTP] Jitter buffer delay: ${jitterBufferDelay}ms`);
 
-    //                 if (bytesReceivedDelta === 0 && checkCount > 2) {
-    //                     console.warn(`[VoiceService RTP] ⚠️ NO RTP DATA RECEIVED! No bytes received in last second`);
-    //                 } else if (bytesReceivedDelta > 0) {
-    //                     console.log(`[VoiceService RTP] ✅ RTP DATA FLOWING: ${bytesReceivedDelta} bytes received in last second`);
-    //                 }
+                    if (bytesReceivedDelta === 0 && checkCount > 2) {
+                        console.warn(`[VoiceService RTP] ⚠️ NO RTP DATA RECEIVED! No bytes received in last second`);
+                    } else if (bytesReceivedDelta > 0) {
+                        console.log(`[VoiceService RTP] ✅ RTP DATA FLOWING: ${bytesReceivedDelta} bytes received in last second`);
+                    }
 
-    //                 if (audioLevel > 0) {
-    //                     console.log(`[VoiceService RTP] ✅ AUDIO DETECTED: Audio level = ${audioLevel}`);
-    //                 } else if (checkCount > 5) {
-    //                     console.warn(`[VoiceService RTP] ⚠️ NO AUDIO DETECTED: Audio level is 0`);
-    //                 }
+                    if (audioLevel > 0) {
+                        console.log(`[VoiceService RTP] ✅ AUDIO DETECTED: Audio level = ${audioLevel}`);
+                    } else if (checkCount > 5) {
+                        console.warn(`[VoiceService RTP] ⚠️ NO AUDIO DETECTED: Audio level is 0`);
+                    }
 
-    //                 previousStats = {
-    //                     bytesReceived,
-    //                     packetsReceived,
-    //                     jitterBufferDelay,
-    //                     audioLevel,
-    //                 };
-    //             } else {
-    //                 console.warn(`[VoiceService RTP] No inbound RTP stats found for check #${checkCount}`);
-    //             }
-    //         } catch (error) {
-    //             console.warn(`[VoiceService RTP] Error getting stats: ${error}`);
-    //         }
+                    previousStats = {
+                        bytesReceived,
+                        packetsReceived,
+                        jitterBufferDelay,
+                        audioLevel,
+                    };
+                } else {
+                    console.warn(`[VoiceService RTP] No inbound RTP stats found for check #${checkCount}`);
+                }
+            } catch (error) {
+                console.warn(`[VoiceService RTP] Error getting stats: ${error}`);
+            }
 
-    //         // Continue monitoring for specified duration
-    //         if (checkCount < maxChecks && this.recvTransport && !this.recvTransport.closed) {
-    //             setTimeout(checkStats, 1000);
-    //         } else if (checkCount >= maxChecks) {
-    //             console.log(`[VoiceService RTP] RTP monitoring completed after ${checkCount} seconds`);
-    //         }
-    //     };
+            // Continue monitoring for specified duration
+            if (checkCount < maxChecks && this.recvTransport && !this.recvTransport.closed) {
+                setTimeout(checkStats, 1000);
+            } else if (checkCount >= maxChecks) {
+                console.log(`[VoiceService RTP] RTP monitoring completed after ${checkCount} seconds`);
+            }
+        };
 
-    //     // Start stats monitoring
-    //     console.log(`[VoiceService RTP] Starting RTP stats monitoring for ${userId} (Consumer: ${consumerId})`);
-    //     checkStats();
-    // }
+        // Start stats monitoring
+        console.log(`[VoiceService RTP] Starting RTP stats monitoring for ${userId} (Consumer: ${consumerId})`);
+        checkStats();
+    }
 
-    // /**
-    //  * Monitor send RTP stats to verify microphone audio is being sent to server
-    //  */
-    // private startSendRtpStatsMonitoring(producerId: string): void {
-    //     let previousStats = {
-    //         bytesSent: 0,
-    //         packetsSent: 0,
-    //         audioLevel: 0,
-    //     };
+    /**
+     * Monitor send RTP stats to verify microphone audio is being sent to server
+     */
+    private startSendRtpStatsMonitoring(producerId: string): void {
+        let previousStats = {
+            bytesSent: 0,
+            packetsSent: 0,
+            audioLevel: 0,
+        };
 
-    //     let checkCount = 0;
-    //     const maxChecks = 20; // Check for 20 seconds (1 check per second)
+        let checkCount = 0;
+        const maxChecks = 20; // Check for 20 seconds (1 check per second)
 
-    //     const checkStats = async () => {
-    //         checkCount++;
+        const checkStats = async () => {
+            checkCount++;
 
-    //         try {
-    //             // Get WebRTC connection stats for send transport
-    //             const stats = await this.sendTransport.getStats();
+            try {
+                // Get WebRTC connection stats for send transport
+                if (!this.sendTransport || this.sendTransport.closed) {
+                    console.warn(`[VoiceService SEND RTP] Send transport not available for stats`);
+                    return;
+                }
+                const stats = await this.sendTransport.getStats();
 
-    //             // Debug: Log all stats types available
-    //             if (checkCount === 1) {
-    //                 console.log(`[VoiceService SEND RTP] ===== FIRST CHECK - DEEP DIAGNOSTICS =====`);
+                // Debug: Log all stats types available
+                if (checkCount === 1) {
+                    console.log(`[VoiceService SEND RTP] ===== FIRST CHECK - DEEP DIAGNOSTICS =====`);
 
-    //                 // Check producer internal sender
-    //                 try {
-    //                     const sender = (this.producer as any)._sender;
-    //                     if (sender) {
-    //                         console.log('[VoiceService SEND RTP] Producer._sender exists, getting sender stats...');
-    //                         try {
-    //                             const senderStats = await sender.getStats();
-    //                             console.log('[VoiceService SEND RTP] RTCRtpSender.getStats():', senderStats);
-    //                             senderStats.forEach((stat: any) => {
-    //                                 if (stat.type === 'outbound-rtp') {
-    //                                     console.log('[VoiceService SEND RTP] Sender outbound-rtp:', {
-    //                                         bytesSent: stat.bytesSent,
-    //                                         packetsSent: stat.packetsSent,
-    //                                         packetsLost: stat.packetsLost,
-    //                                         jitter: stat.jitter,
-    //                                     });
-    //                                 }
-    //                             });
-    //                         } catch (e) {
-    //                             console.error('[VoiceService SEND RTP] Error getting sender stats:', e);
-    //                         }
-    //                     } else {
-    //                         console.warn('[VoiceService SEND RTP] ⚠️⚠️⚠️ Producer._sender is NULL/UNDEFINED!');
-    //                     }
-    //                 } catch (e) {
-    //                     console.error('[VoiceService SEND RTP] Error accessing _sender:', e);
-    //                 }
+                    // Check producer internal sender
+                    try {
+                        const sender = (this.producer as any)._sender;
+                        if (sender) {
+                            console.log('[VoiceService SEND RTP] Producer._sender exists, getting sender stats...');
+                            try {
+                                const senderStats = await sender.getStats();
+                                console.log('[VoiceService SEND RTP] RTCRtpSender.getStats():', senderStats);
+                                senderStats.forEach((stat: any) => {
+                                    if (stat.type === 'outbound-rtp') {
+                                        console.log('[VoiceService SEND RTP] Sender outbound-rtp:', {
+                                            bytesSent: stat.bytesSent,
+                                            packetsSent: stat.packetsSent,
+                                            packetsLost: stat.packetsLost,
+                                            jitter: stat.jitter,
+                                        });
+                                    }
+                                });
+                            } catch (e) {
+                                console.error('[VoiceService SEND RTP] Error getting sender stats:', e);
+                            }
+                        } else {
+                            console.warn('[VoiceService SEND RTP] ⚠️⚠️⚠️ Producer._sender is NULL/UNDEFINED!');
+                        }
+                    } catch (e) {
+                        console.error('[VoiceService SEND RTP] Error accessing _sender:', e);
+                    }
 
-    //                 const statsTypes: string[] = [];
-    //                 stats.forEach((report) => {
-    //                     if (!statsTypes.includes(report.type)) {
-    //                         statsTypes.push(report.type);
-    //                     }
-    //                 });
-    //                 console.log(`[VoiceService SEND RTP] Available stats types: ${statsTypes.join(', ')}`);
+                    const statsTypes: string[] = [];
+                    stats.forEach((report) => {
+                        if (!statsTypes.includes(report.type)) {
+                            statsTypes.push(report.type);
+                        }
+                    });
+                    console.log(`[VoiceService SEND RTP] Available stats types: ${statsTypes.join(', ')}`);
 
-    //                 // Log all candidate pair and inbound-rtp stats for debugging
-    //                 stats.forEach((report) => {
-    //                     if (report.type === 'candidate-pair' && (report as any).state === 'succeeded') {
-    //                         console.log(`[VoiceService SEND RTP] Active candidate pair: ${(report as any).localAddress}:${(report as any).localPort} <-> ${(report as any).remoteAddress}:${(report as any).remotePort}`);
-    //                     }
-    //                     if (report.type === 'inbound-rtp' && report.kind === 'audio') {
-    //                         console.log(`[VoiceService SEND RTP] Inbound RTP state: ${JSON.stringify({
-    //                             bytesReceived: (report as any).bytesReceived,
-    //                             packetsReceived: (report as any).packetsReceived,
-    //                         })}`);
-    //                     }
-    //                 });
-    //             }
+                    // Log all candidate pair and inbound-rtp stats for debugging
+                    stats.forEach((report) => {
+                        if (report.type === 'candidate-pair' && (report as any).state === 'succeeded') {
+                            console.log(`[VoiceService SEND RTP] Active candidate pair: ${(report as any).localAddress}:${(report as any).localPort} <-> ${(report as any).remoteAddress}:${(report as any).remotePort}`);
+                        }
+                        if (report.type === 'inbound-rtp' && report.kind === 'audio') {
+                            console.log(`[VoiceService SEND RTP] Inbound RTP state: ${JSON.stringify({
+                                bytesReceived: (report as any).bytesReceived,
+                                packetsReceived: (report as any).packetsReceived,
+                            })}`);
+                        }
+                    });
+                }
 
-    //             let outboundRtpStats: any = null;
-    //             stats.forEach((report) => {
-    //                 if (report.type === 'outbound-rtp' && report.kind === 'audio') {
-    //                     outboundRtpStats = report;
-    //                 }
-    //             });
+                let outboundRtpStats: any = null;
+                stats.forEach((report) => {
+                    if (report.type === 'outbound-rtp' && report.kind === 'audio') {
+                        outboundRtpStats = report;
+                    }
+                });
 
-    //             if (outboundRtpStats) {
-    //                 const bytesSent = outboundRtpStats.bytesSent || 0;
-    //                 const packetsSent = outboundRtpStats.packetsSent || 0;
+                if (outboundRtpStats) {
+                    const bytesSent = outboundRtpStats.bytesSent || 0;
+                    const packetsSent = outboundRtpStats.packetsSent || 0;
 
-    //                 const bytesSentDelta = bytesSent - previousStats.bytesSent;
-    //                 const packetsSentDelta = packetsSent - previousStats.packetsSent;
+                    const bytesSentDelta = bytesSent - previousStats.bytesSent;
+                    const packetsSentDelta = packetsSent - previousStats.packetsSent;
 
-    //                 console.log(`[VoiceService SEND RTP] Check #${checkCount} for Producer: ${producerId}`);
-    //                 console.log(`[VoiceService SEND RTP] Bytes sent: ${bytesSent} (Δ ${bytesSentDelta})`);
-    //                 console.log(`[VoiceService SEND RTP] Packets sent: ${packetsSent} (Δ ${packetsSentDelta})`);
+                    console.log(`[VoiceService SEND RTP] Check #${checkCount} for Producer: ${producerId}`);
+                    console.log(`[VoiceService SEND RTP] Bytes sent: ${bytesSent} (Δ ${bytesSentDelta})`);
+                    console.log(`[VoiceService SEND RTP] Packets sent: ${packetsSent} (Δ ${packetsSentDelta})`);
 
-    //                 if (bytesSentDelta === 0 && checkCount > 3) {
-    //                     console.warn(`[VoiceService SEND RTP] ⚠️ NO AUDIO BEING SENT! No bytes sent in last second`);
-    //                 } else if (bytesSentDelta > 0) {
-    //                     console.log(`[VoiceService SEND RTP] ✅ AUDIO BEING SENT: ${bytesSentDelta} bytes sent to server in last second`);
-    //                 }
+                    if (bytesSentDelta === 0 && checkCount > 3) {
+                        console.warn(`[VoiceService SEND RTP] ⚠️ NO AUDIO BEING SENT! No bytes sent in last second`);
+                    } else if (bytesSentDelta > 0) {
+                        console.log(`[VoiceService SEND RTP] ✅ AUDIO BEING SENT: ${bytesSentDelta} bytes sent to server in last second`);
+                    }
 
-    //                 previousStats = {
-    //                     bytesSent,
-    //                     packetsSent,
-    //                     audioLevel: 0,
-    //                 };
-    //             } else {
-    //                 if (checkCount === 1) {
-    //                     console.warn(`[VoiceService SEND RTP] ⚠️⚠️⚠️ NO OUTBOUND RTP STATS FOUND! Producer may not be encoding.`);
-    //                     console.warn(`[VoiceService SEND RTP] Producer state:`, {
-    //                         id: this.producer?.id,
-    //                         paused: this.producer?.paused,
-    //                         closed: this.producer?.closed,
-    //                         trackId: this.producer?.track?.id,
-    //                         trackEnabled: this.producer?.track?.enabled,
-    //                         trackReadyState: this.producer?.track?.readyState,
-    //                     });
-    //                     console.warn(`[VoiceService SEND RTP] Send transport state:`, {
-    //                         connectionState: this.sendTransport.connectionState,
-    //                         closed: this.sendTransport.closed,
-    //                     });
-    //                 }
-    //             }
-    //         } catch (error) {
-    //             console.warn(`[VoiceService SEND RTP] Error getting stats: ${error}`);
-    //         }
+                    previousStats = {
+                        bytesSent,
+                        packetsSent,
+                        audioLevel: 0,
+                    };
+                } else {
+                    if (checkCount === 1) {
+                        console.warn(`[VoiceService SEND RTP] ⚠️⚠️⚠️ NO OUTBOUND RTP STATS FOUND! Producer may not be encoding.`);
+                        console.warn(`[VoiceService SEND RTP] Producer state:`, {
+                            id: this.producer?.id,
+                            paused: this.producer?.paused,
+                            closed: this.producer?.closed,
+                            trackId: this.producer?.track?.id,
+                            trackEnabled: this.producer?.track?.enabled,
+                            trackReadyState: this.producer?.track?.readyState,
+                        });
+                        if (this.sendTransport && !this.sendTransport.closed) {
+                            console.warn(`[VoiceService SEND RTP] Send transport state:`, {
+                                connectionState: this.sendTransport.connectionState,
+                                closed: this.sendTransport.closed,
+                            });
+                        }
+                    }
+                }
+            } catch (error) {
+                console.warn(`[VoiceService SEND RTP] Error getting stats: ${error}`);
+            }
 
-    //         // Continue monitoring for specified duration
-    //         if (checkCount < maxChecks && this.sendTransport && !this.sendTransport.closed) {
-    //             setTimeout(checkStats, 1000);
-    //         } else if (checkCount >= maxChecks) {
-    //             console.log(`[VoiceService SEND RTP] Send RTP monitoring completed after ${checkCount} seconds`);
-    //         }
-    //     };
+            // Continue monitoring for specified duration
+            if (checkCount < maxChecks && this.sendTransport && !this.sendTransport.closed) {
+                setTimeout(checkStats, 1000);
+            } else if (checkCount >= maxChecks) {
+                console.log(`[VoiceService SEND RTP] Send RTP monitoring completed after ${checkCount} seconds`);
+            }
+        };
 
-    //     // Start stats monitoring
-    //     console.log(`[VoiceService SEND RTP] Starting send RTP stats monitoring for Producer: ${producerId}`);
-    //     checkStats();
-    // }
+        // Start stats monitoring
+        console.log(`[VoiceService SEND RTP] Starting send RTP stats monitoring for Producer: ${producerId}`);
+        checkStats();
+    }
 
     // ============================================================================
     // PRIVATE - SOCKET EVENT HANDLERS
