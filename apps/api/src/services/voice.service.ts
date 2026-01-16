@@ -181,19 +181,28 @@ export async function connectTransport(
     const participant = getOrCreateParticipant(roomId, userId);
 
     let transport: WebRtcTransport | null = null;
+    let transportType = '';
 
     if (participant.sendTransport?.id === transportId) {
         transport = participant.sendTransport;
+        transportType = 'send';
     } else if (participant.recvTransport?.id === transportId) {
         transport = participant.recvTransport;
+        transportType = 'recv';
     }
 
     if (!transport) {
+        console.error(`[ConnectTransport] Transport not found! User: ${userId}, Transport ID: ${transportId}`);
         throw new AppError('Transport not found', 404);
     }
 
+    console.log(`[ConnectTransport] Connecting ${transportType} transport for user ${userId}`);
+    console.log(`[ConnectTransport] Transport ID: ${transportId}`);
+    console.log(`[ConnectTransport] DTLS Parameters:`, JSON.stringify(dtlsParameters, null, 2));
+
     await transport.connect({ dtlsParameters });
-    console.log(`Connected transport ${transportId} for user ${userId}`);
+
+    console.log(`[ConnectTransport] ✅ ${transportType} transport connected successfully! User: ${userId}, Transport: ${transportId}`);
 }
 
 
@@ -217,24 +226,36 @@ export async function produce(
         throw new AppError('Send transport not found', 404);
     }
 
+    console.log(`[Produce] Creating producer for user ${userId} in room ${roomId}`);
+    console.log(`[Produce] Transport ID: ${transportId}`);
+    console.log(`[Produce] Kind: ${kind}`);
+    console.log(`[Produce] RTP Parameters:`, JSON.stringify(rtpParameters, null, 2));
+
     const producer = await participant.sendTransport.produce({
         kind,
         rtpParameters,
     });
 
+    console.log(`[Produce] Producer created successfully!`);
+    console.log(`[Produce] Producer ID: ${producer.id}`);
+    console.log(`[Produce] Producer paused: ${producer.paused}`);
+    console.log(`[Produce] Producer closed: ${producer.closed}`);
+
     participant.producer = producer;
 
     // Add producer to AudioLevelObserver for speaking detection
     if (kind === 'audio') {
+        console.log(`[Produce] Adding producer to AudioLevelObserver`);
         await room.audioLevelObserver.addProducer({ producerId: producer.id });
+        console.log(`[Produce] Producer added to AudioLevelObserver`);
     }
 
     producer.on('transportclose', () => {
-        console.log(`Producer ${producer.id} transport closed`);
+        console.log(`[Produce] Producer ${producer.id} transport closed`);
         producer.close();
     });
 
-    console.log(`Created producer ${producer.id} for user ${userId} in room ${roomId}`);
+    console.log(`[Produce] Producer ready to send audio: ${producer.id} for user ${userId}`);
 
     return producer.id;
 }
@@ -264,9 +285,16 @@ export async function consume(
         throw new AppError('Receive transport not found', 404);
     }
 
+    console.log(`[Consume] Creating consumer for user ${userId} in room ${roomId}`);
+    console.log(`[Consume] Producer ID: ${producerId}`);
+    console.log(`[Consume] Recv transport ID: ${participant.recvTransport.id}`);
+
     // Check if router can consume this producer
-    if (!room.router.canConsume({ producerId, rtpCapabilities })) {
-        console.log(`Cannot consume producer ${producerId} for user ${userId}`);
+    const canConsume = room.router.canConsume({ producerId, rtpCapabilities });
+    console.log(`[Consume] Router can consume: ${canConsume}`);
+
+    if (!canConsume) {
+        console.log(`[Consume] Cannot consume producer ${producerId} for user ${userId} - codec mismatch or producer not found`);
         return null;
     }
 
@@ -276,26 +304,34 @@ export async function consume(
         paused: false,
     });
 
+    console.log(`[Consume] Consumer created successfully!`);
+    console.log(`[Consume] Consumer ID: ${consumer.id}`);
+    console.log(`[Consume] Consumer kind: ${consumer.kind}`);
+    console.log(`[Consume] Consumer paused: ${consumer.paused}`);
+    console.log(`[Consume] Consumer closed: ${consumer.closed}`);
+
     participant.consumers.set(producerId, consumer);
 
     consumer.on('transportclose', () => {
-        console.log(`Consumer ${consumer.id} transport closed`);
+        console.log(`[Consume] Consumer ${consumer.id} transport closed`);
         consumer.close();
     });
 
     consumer.on('producerclose', () => {
-        console.log(`Consumer ${consumer.id} producer closed`);
+        console.log(`[Consume] Consumer ${consumer.id} producer closed`);
         participant.consumers.delete(producerId);
         consumer.close();
     });
 
-    console.log(`Created consumer ${consumer.id} for producer ${producerId}`);
+    const rtpParams = consumer.rtpParameters;
+    console.log(`[Consume] Consumer RTP Parameters:`, JSON.stringify(rtpParams, null, 2));
+    console.log(`[Consume] Consumer ready to receive audio: ${consumer.id}`);
 
     return {
         id: consumer.id,
         producerId: consumer.producerId,
         kind: consumer.kind,
-        rtpParameters: consumer.rtpParameters,
+        rtpParameters: rtpParams,
     };
 }
 

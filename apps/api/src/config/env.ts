@@ -22,7 +22,7 @@ export const config = {
     mediasoup: {
         workers: parseInt(process.env.MEDIASOUP_WORKERS || '3'),
         listenIp: process.env.MEDIASOUP_LISTEN_IP || '0.0.0.0',
-        announcedIp: process.env.MEDIASOUP_ANNOUNCED_IP || '127.0.0.1',
+        announcedIp: process.env.MEDIASOUP_ANNOUNCED_IP || 'localhost',
         rtcMinPort: parseInt(process.env.MEDIASOUP_RTC_MIN_PORT || '10000'),
         rtcMaxPort: parseInt(process.env.MEDIASOUP_RTC_MAX_PORT || '10100'),
     },

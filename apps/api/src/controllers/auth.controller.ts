@@ -28,7 +28,7 @@ export async function registerController(req: Request, res: Response, next: Func
         res.cookie('refreshToken', result.tokens.refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
+            sameSite: 'none', // lax for more safety
             maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
         });
 
@@ -60,7 +60,7 @@ export async function loginController(req: Request, res: Response, next: Functio
         res.cookie('refreshToken', result.tokens.refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
+            sameSite: 'none', // lax for more safety
             maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
         });
 
@@ -92,7 +92,7 @@ export async function refreshTokenController(req: Request, res: Response, next: 
         res.cookie('refreshToken', tokens.refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
+            sameSite: 'none', // lax for more safety 
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
 

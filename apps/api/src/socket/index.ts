@@ -534,7 +534,13 @@ export function initSocketHandlers(
                 );
 
                 // Notify others about new producer
-                socket.to(`room:${socket.roomId}`).emit('voice:new-producer', userId, producerId);
+                const roomChannel = `room:${socket.roomId}`;
+                const socketsInRoom = io.sockets.adapter.rooms.get(roomChannel);
+                console.log(`[Voice:Produce] Broadcasting voice:new-producer to room ${roomChannel}`);
+                console.log(`[Voice:Produce] Sockets in room: ${socketsInRoom ? Array.from(socketsInRoom).join(', ') : 'none'}`);
+                console.log(`[Voice:Produce] Producer: ${producerId}, User: ${userId}`);
+                socket.to(roomChannel).emit('voice:new-producer', userId, producerId);
+                console.log(`[Voice:Produce] Broadcast sent to ${socketsInRoom ? socketsInRoom.size - 1 : 0} other sockets`);
 
                 // Setup speaking detection
                 setupSpeakingDetection(io, socket.roomId, userId);
