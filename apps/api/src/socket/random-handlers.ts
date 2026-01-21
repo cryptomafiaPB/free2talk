@@ -40,9 +40,8 @@ let matchingInterval: NodeJS.Timeout | null = null;
 let cleanupInterval: NodeJS.Timeout | null = null;
 let statsInterval: NodeJS.Timeout | null = null;
 
-/**
- * Initialize random call socket handlers
- */
+
+// Initialize random call socket handlers
 export function initRandomCallHandlers(
     io: Server<ClientToServerEvents, ServerToClientEvents>
 ) {
@@ -54,9 +53,8 @@ export function initRandomCallHandlers(
     console.log('[Random] Random call handlers initialized');
 }
 
-/**
- * Register random call event handlers for a socket
- */
+
+// Register random call event handlers for a socket
 export function registerRandomCallEvents(
     io: Server<ClientToServerEvents, ServerToClientEvents>,
     socket: AuthSocket
@@ -66,11 +64,10 @@ export function registerRandomCallEvents(
     // Track socket mapping
     userSocketMap.set(userId, socket.id);
 
-    // ==================== Queue Events ====================
+    // Queue Events 
 
-    /**
-     * Join the random matching queue
-     */
+
+    // Join the random matching queue
     socket.on('random:start_queue' as any, async (
         payload: RandomStartQueuePayload,
         callback?: (response: RandomQueueResponse) => void
@@ -116,9 +113,7 @@ export function registerRandomCallEvents(
         }
     });
 
-    /**
-     * Leave the random matching queue
-     */
+    // Leave the random matching queue
     socket.on('random:cancel_queue' as any, async (
         callback?: (response: { success: boolean }) => void
     ) => {
@@ -133,11 +128,9 @@ export function registerRandomCallEvents(
         }
     });
 
-    // ==================== P2P Signaling Events ====================
+    // -------------------- P2P Signaling Events 
 
-    /**
-     * Forward ICE candidate to peer
-     */
+    // Forward ICE candidate to peer
     socket.on('random:ice_candidate' as any, async (payload: RandomIceCandidatePayload) => {
         const { sessionId, candidate } = payload;
 
@@ -154,9 +147,7 @@ export function registerRandomCallEvents(
         }
     });
 
-    /**
-     * Relay text chat message to partner (ephemeral - not stored in DB)
-     */
+    // Relay text chat message to partner (ephemeral - not stored in DB)
     socket.on('random:chat_message' as any, async (
         payload: { sessionId: string; message: string },
         callback?: (response: { success: boolean }) => void
@@ -196,9 +187,7 @@ export function registerRandomCallEvents(
         }
     });
 
-    /**
-     * Forward WebRTC offer to peer
-     */
+    // Forward WebRTC offer to peer
     socket.on('random:offer' as any, async (payload: RandomOfferPayload) => {
         const { sessionId, offer } = payload;
 
@@ -224,9 +213,8 @@ export function registerRandomCallEvents(
         }
     });
 
-    /**
-     * Forward WebRTC answer to peer
-     */
+
+    // Forward WebRTC answer to peer
     socket.on('random:answer' as any, async (payload: RandomAnswerPayload) => {
         const { sessionId, answer } = payload;
 
@@ -259,11 +247,9 @@ export function registerRandomCallEvents(
         }
     });
 
-    // ==================== Call Control Events ====================
+    // -------------------- Call Control Events 
 
-    /**
-     * Skip current partner and find next
-     */
+    // Skip current partner and find next
     socket.on('random:next_partner' as any, async (
         payload: RandomNextPartnerPayload,
         callback?: (response: RandomQueueResponse) => void
@@ -319,9 +305,7 @@ export function registerRandomCallEvents(
         }
     });
 
-    /**
-     * End the current call
-     */
+    // End the current call
     socket.on('random:end_call' as any, async (
         payload: RandomEndCallPayload,
         callback?: (response: { success: boolean }) => void
@@ -361,9 +345,7 @@ export function registerRandomCallEvents(
         }
     });
 
-    /**
-     * Report a user for inappropriate behavior
-     */
+    // Report a user for inappropriate behavior
     socket.on('random:report_user' as any, async (
         payload: RandomReportUserPayload,
         callback?: (response: { success: boolean }) => void
@@ -379,7 +361,6 @@ export function registerRandomCallEvents(
                 // Block this user for the reporter
                 await randomService.blockUser(userId, partnerId);
 
-                // TODO: Store report in database for moderation
                 console.log(`[Random] User ${partnerId} reported by ${userId}: ${reason}`);
             }
 
@@ -390,25 +371,21 @@ export function registerRandomCallEvents(
         }
     });
 
-    // ==================== Stats Events ====================
+    //  Stats Events 
 
-    /**
-     * Subscribe to stats updates
-     */
+    // Subscribe to stats updates
     socket.on('random:subscribe_stats' as any, () => {
         statsSubscribers.add(socket.id);
         console.log(`[Random] Socket ${socket.id} subscribed to stats`);
     });
 
-    /**
-     * Unsubscribe from stats updates
-     */
+    // Unsubscribe from stats updates
     socket.on('random:unsubscribe_stats' as any, () => {
         statsSubscribers.delete(socket.id);
         console.log(`[Random] Socket ${socket.id} unsubscribed from stats`);
     });
 
-    // ==================== Disconnect Handler ====================
+    // ------------------- Disconnect Handler 
 
     socket.on('disconnect', async () => {
         console.log(`[Random] User ${userId} disconnected`);
@@ -446,11 +423,10 @@ export function registerRandomCallEvents(
     });
 }
 
-// ==================== Helper Functions ====================
+// ---------------------- Helper Functions 
 
-/**
- * Notify both users that a match was found
- */
+
+// Notify both users that a match was found
 async function notifyMatchFound(
     io: Server<ClientToServerEvents, ServerToClientEvents>,
     session: Awaited<ReturnType<typeof randomService.createCallSession>>
@@ -497,11 +473,10 @@ async function notifyMatchFound(
     console.log(`[Random] Match notification sent: ${session.user1Id} <-> ${session.user2Id}`);
 }
 
-// ==================== Background Processes ====================
+// ------------------- Background Processes 
 
-/**
- * Start the matching loop (processes queue every 100ms)
- */
+
+// Start the matching loop (processes queue every 100ms)
 function startMatchingLoop(io: Server<ClientToServerEvents, ServerToClientEvents>) {
     if (matchingInterval) {
         clearInterval(matchingInterval);
@@ -526,9 +501,7 @@ function startMatchingLoop(io: Server<ClientToServerEvents, ServerToClientEvents
     console.log('[Random] Matching loop started');
 }
 
-/**
- * Start the cleanup loop (runs every 10 seconds)
- */
+// Start the cleanup loop (runs every 10 seconds)
 function startCleanupLoop() {
     if (cleanupInterval) {
         clearInterval(cleanupInterval);
@@ -550,9 +523,7 @@ function startCleanupLoop() {
     console.log('[Random] Cleanup loop started');
 }
 
-/**
- * Start the stats broadcast loop (runs every 2 seconds)
- */
+// Start the stats broadcast loop (runs every 2 seconds)
 function startStatsLoop(io: Server<ClientToServerEvents, ServerToClientEvents>) {
     if (statsInterval) {
         clearInterval(statsInterval);
@@ -578,9 +549,8 @@ function startStatsLoop(io: Server<ClientToServerEvents, ServerToClientEvents>) 
     console.log('[Random] Stats broadcast loop started');
 }
 
-/**
- * Stop all background processes (for graceful shutdown)
- */
+
+// Stop all background processes (for graceful shutdown)
 export function stopRandomCallProcesses() {
     if (matchingInterval) {
         clearInterval(matchingInterval);
@@ -597,9 +567,8 @@ export function stopRandomCallProcesses() {
     console.log('[Random] Background processes stopped');
 }
 
-/**
- * Get user socket ID (for external use)
- */
+
+// Get user socket ID (for external use)
 export function getUserSocketId(userId: string): string | undefined {
     return userSocketMap.get(userId);
 }

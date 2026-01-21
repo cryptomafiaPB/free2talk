@@ -10,10 +10,7 @@ declare global {
     }
 }
 
-/**
- * Required authentication middleware
- * Returns 401 if no valid token is provided
- */
+// Returns 401 if no valid token is provided
 export const authMiddleware = async (
     req: Request,
     res: Response,
@@ -21,7 +18,7 @@ export const authMiddleware = async (
 ) => {
     try {
         // Get token from Authorization header or cookies
-        const authHeader = req.headers.authorization;
+        const authHeader = req.headers.authorization || (req.cookies ? req.cookies['accessToken'] : null);
 
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return res.status(401).json({
@@ -55,17 +52,16 @@ export const authMiddleware = async (
     }
 };
 
-/**
- * Optional authentication middleware
- * Attaches user if valid token is provided, but doesn't require it
- */
+
+// Optional authentication middleware
+// Attaches user if valid token is provided, but doesn't require it
 export const optionalAuthMiddleware = async (
     req: Request,
     res: Response,
     next: NextFunction
 ) => {
     try {
-        const authHeader = req.headers.authorization;
+        const authHeader = req.headers.authorization || (req.cookies ? req.cookies['accessToken'] : null);
 
         if (authHeader && authHeader.startsWith('Bearer ')) {
             const token = authHeader.split(' ')[1];

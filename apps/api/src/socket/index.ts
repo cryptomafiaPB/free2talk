@@ -102,17 +102,17 @@ export function initSocketHandlers(
             console.log(`[Socket Debug] ${timestamp} Event received: ${event}`, args.slice(0, -1).map(a => typeof a === 'function' ? '[callback]' : JSON.stringify(a).slice(0, 100)));
         });
 
-        // ==================== REGISTER ALL EVENT HANDLERS FIRST (synchronously) ====================
+        // ------------------- REGISTER ALL EVENT HANDLERS FIRST (synchronously) 
         // This ensures handlers are ready before any async operations complete
         // and before the client can send events
 
-        // ==================== Random Call Events ====================
+        // -------------------- Random Call Events 
         // Only register for authenticated users
         if (isAuthenticated) {
             registerRandomCallEvents(io, socket);
         }
 
-        // ==================== Hallway Events ====================
+        // -------------------- Hallway Events 
         // Available for both authenticated and unauthenticated users
 
         socket.on('hallway:subscribe', async () => {
@@ -127,10 +127,10 @@ export function initSocketHandlers(
             console.log(`${userLabel} unsubscribed from hallway`);
         });
 
-        // ==================== Room Events ====================
+        // --------------------- Room Events 
 
         /**
-         * INDUSTRY STANDARD: Room Join Flow
+         * Room Join Flow
          * 
          * 1. Verify room is active
          * 2. Add user to room in database (if not already present)
@@ -227,8 +227,6 @@ export function initSocketHandlers(
                 });
 
                 // 7. Notify ALL participants about new user (including sender - client filters)
-                // IMPORTANT: Using io.to() instead of socket.to() to ensure ALL sockets receive
-                // This fixes the issue where participants don't see each other joining
                 if (currentParticipant) {
                     const roomChannel = `room:${roomId}`;
                     const roomSockets = io.sockets.adapter.rooms.get(roomChannel);
@@ -251,9 +249,6 @@ export function initSocketHandlers(
                     });
                     console.log(`[RoomJoin] Broadcast sent for user ${currentParticipant.username} to ${roomSockets?.size || 0} sockets`);
 
-                    // ALSO broadcast full participant list for reconciliation
-                    // This helps clients that may have missed earlier events sync their state
-                    // Note: Using type assertion since 'room:participants-updated' is a new event
                     (io.to(roomChannel) as any).emit('room:participants-updated', {
                         participants: participantList,
                         reason: 'user-joined',
@@ -290,10 +285,9 @@ export function initSocketHandlers(
             }
         });
 
-        /**
-         * Room Sync - Request full room state (for reconnection scenarios)
-         * Also rejoins the socket to the room channel (important after reconnection!)
-         */
+
+        // Room Sync - Request full room state (for reconnection scenarios)
+        // Also rejoins the socket to the room channel (important after reconnection!)
         socket.on('room:sync', async (roomId, callback) => {
             // Only authenticated users
             if (!isAuthenticated) {
@@ -446,7 +440,7 @@ export function initSocketHandlers(
             }
         });
 
-        // ==================== Voice (mediasoup) Events ====================
+        // ------------------- Voice (mediasoup) Events 
 
         socket.on('voice:get-rtp-capabilities', async (callback) => {
             if (!isAuthenticated) {
@@ -598,7 +592,7 @@ export function initSocketHandlers(
             }
         });
 
-        // ==================== Disconnect ====================
+        // ----------------- Disconnect 
 
         socket.on('disconnect', async () => {
             const disconnectLabel = isAuthenticated ? `User: ${userId}` : `Guest: ${socket.id}`;
@@ -645,7 +639,7 @@ export function initSocketHandlers(
             }
         });
 
-        // ==================== Async Initialization (runs after all handlers are registered) ====================
+        // --------------------- Async Initialization (runs after all handlers are registered) 
         // Update user online status in background - don't block event handling
         // Only for authenticated users
         if (isAuthenticated) {

@@ -1,12 +1,9 @@
 import { redis, CACHE_KEYS, CACHE_TTL } from '../db/redis.js';
 
-/**
- * Generic cache service with common operations
- */
+
+// Generic cache service with common operations
 export class CacheService {
-    /**
-     * Get cached value
-     */
+    // Get cached value
     static async get<T>(key: string): Promise<T | null> {
         try {
             const cached = await redis.get(key);
@@ -18,9 +15,7 @@ export class CacheService {
         }
     }
 
-    /**
-     * Set cached value with TTL
-     */
+    // Set cached value with TTL
     static async set(key: string, value: any, ttl: number = CACHE_TTL.MEDIUM): Promise<void> {
         try {
             await redis.setEx(key, ttl, JSON.stringify(value));
@@ -29,9 +24,7 @@ export class CacheService {
         }
     }
 
-    /**
-     * Delete cached value
-     */
+    // Delete cached value
     static async del(key: string): Promise<void> {
         try {
             await redis.del(key);
@@ -40,9 +33,7 @@ export class CacheService {
         }
     }
 
-    /**
-     * Delete multiple keys matching a pattern
-     */
+    // Delete multiple keys matching a pattern
     static async delPattern(pattern: string): Promise<void> {
         try {
             const keys = await redis.keys(pattern);
@@ -54,9 +45,7 @@ export class CacheService {
         }
     }
 
-    /**
-     * Check if key exists
-     */
+    // Check if key exists
     static async exists(key: string): Promise<boolean> {
         try {
             return (await redis.exists(key)) === 1;
@@ -66,9 +55,7 @@ export class CacheService {
         }
     }
 
-    /**
-     * Increment a counter
-     */
+    // Increment a counter
     static async incr(key: string, ttl?: number): Promise<number> {
         try {
             const value = await redis.incr(key);
@@ -82,9 +69,7 @@ export class CacheService {
         }
     }
 
-    /**
-     * Add to a set
-     */
+    // Add to a set
     static async sAdd(key: string, ...members: string[]): Promise<void> {
         try {
             await redis.sAdd(key, members);
@@ -93,9 +78,7 @@ export class CacheService {
         }
     }
 
-    /**
-     * Remove from a set
-     */
+    // Remove from a set
     static async sRem(key: string, ...members: string[]): Promise<void> {
         try {
             await redis.sRem(key, members);
@@ -104,9 +87,7 @@ export class CacheService {
         }
     }
 
-    /**
-     * Get all members of a set
-     */
+    // Get all members of a set 
     static async sMembers(key: string): Promise<string[]> {
         try {
             return await redis.sMembers(key);
@@ -116,9 +97,7 @@ export class CacheService {
         }
     }
 
-    /**
-     * Check if member exists in set
-     */
+    // Check if member exists in set
     static async sIsMember(key: string, member: string): Promise<boolean> {
         try {
             return await redis.sIsMember(key, member);
@@ -128,9 +107,7 @@ export class CacheService {
         }
     }
 
-    /**
-     * Set hash field
-     */
+    // Set hash field
     static async hSet(key: string, field: string, value: string): Promise<void> {
         try {
             await redis.hSet(key, field, value);
@@ -139,9 +116,7 @@ export class CacheService {
         }
     }
 
-    /**
-     * Get hash field
-     */
+    // Get hash field
     static async hGet(key: string, field: string): Promise<string | null> {
         try {
             const result = await redis.hGet(key, field);
@@ -152,9 +127,7 @@ export class CacheService {
         }
     }
 
-    /**
-     * Get all hash fields
-     */
+    // Get all hash fields
     static async hGetAll(key: string): Promise<Record<string, string>> {
         try {
             return await redis.hGetAll(key);
@@ -164,9 +137,7 @@ export class CacheService {
         }
     }
 
-    /**
-     * Delete hash field
-     */
+    // Delete hash field
     static async hDel(key: string, field: string): Promise<void> {
         try {
             await redis.hDel(key, field);
@@ -175,9 +146,7 @@ export class CacheService {
         }
     }
 
-    /**
-     * Publish message to channel (for pub/sub)
-     */
+    // Publish message to channel (for pub/sub)
     static async publish(channel: string, message: string): Promise<void> {
         try {
             await redis.publish(channel, message);
@@ -187,27 +156,20 @@ export class CacheService {
     }
 }
 
-/**
- * Room-specific caching
- */
+
+// Room-specific caching
 export class RoomCache {
-    /**
-     * Cache room details
-     */
+    // Cache room details
     static async cacheRoom(roomId: string, room: any): Promise<void> {
         await CacheService.set(CACHE_KEYS.ROOM(roomId), room, CACHE_TTL.MEDIUM);
     }
 
-    /**
-     * Get cached room
-     */
+    // Get cached room
     static async getRoom(roomId: string): Promise<any | null> {
         return await CacheService.get(CACHE_KEYS.ROOM(roomId));
     }
 
-    /**
-     * Invalidate room cache
-     */
+    // Invalidate room cache
     static async invalidateRoom(roomId: string): Promise<void> {
         await CacheService.del(CACHE_KEYS.ROOM(roomId));
         await CacheService.del(CACHE_KEYS.ROOM_PARTICIPANTS(roomId));
@@ -215,9 +177,7 @@ export class RoomCache {
         await CacheService.delPattern('rooms:list:*');
     }
 
-    /**
-     * Cache room participants
-     */
+    // Cache room participants
     static async cacheParticipants(roomId: string, participants: any[]): Promise<void> {
         await CacheService.set(
             CACHE_KEYS.ROOM_PARTICIPANTS(roomId),
@@ -226,16 +186,12 @@ export class RoomCache {
         );
     }
 
-    /**
-     * Get cached participants
-     */
+    // Get cached participants
     static async getParticipants(roomId: string): Promise<any[] | null> {
         return await CacheService.get(CACHE_KEYS.ROOM_PARTICIPANTS(roomId));
     }
 
-    /**
-     * Cache rooms list
-     */
+    // Cache rooms list
     static async cacheRoomsList(
         page: number,
         limit: number,
@@ -249,9 +205,7 @@ export class RoomCache {
         );
     }
 
-    /**
-     * Get cached rooms list
-     */
+    // Get cached rooms list
     static async getRoomsList(
         page: number,
         limit: number,
@@ -260,64 +214,46 @@ export class RoomCache {
         return await CacheService.get(CACHE_KEYS.ROOMS_LIST(page, limit, language));
     }
 
-    /**
-     * Invalidate all rooms list caches
-     */
+    // Invalidate all rooms list caches
     static async invalidateRoomsList(): Promise<void> {
         await CacheService.delPattern('rooms:list:*');
     }
 
-    /**
-     * Add room to active rooms set
-     */
+    // Add room to active rooms set
     static async addActiveRoom(roomId: string): Promise<void> {
         await CacheService.sAdd(CACHE_KEYS.ACTIVE_ROOMS, roomId);
     }
 
-    /**
-     * Remove room from active rooms set
-     */
+    // Remove room from active rooms set
     static async removeActiveRoom(roomId: string): Promise<void> {
         await CacheService.sRem(CACHE_KEYS.ACTIVE_ROOMS, roomId);
     }
 
-    /**
-     * Get all active room IDs
-     */
+    // Get all active room IDs
     static async getActiveRooms(): Promise<string[]> {
         return await CacheService.sMembers(CACHE_KEYS.ACTIVE_ROOMS);
     }
 }
 
-/**
- * User-specific caching
- */
+// User-specific caching
 export class UserCache {
-    /**
-     * Cache user profile
-     */
+    // Cache user profile
     static async cacheUser(userId: string, user: any): Promise<void> {
         await CacheService.set(CACHE_KEYS.USER_PROFILE(userId), user, CACHE_TTL.LONG);
     }
 
-    /**
-     * Get cached user
-     */
+    // Get cached user
     static async getUser(userId: string): Promise<any | null> {
         return await CacheService.get(CACHE_KEYS.USER_PROFILE(userId));
     }
 
-    /**
-     * Invalidate user cache
-     */
+    // Invalidate user cache
     static async invalidateUser(userId: string): Promise<void> {
         await CacheService.del(CACHE_KEYS.USER_PROFILE(userId));
         await CacheService.del(CACHE_KEYS.USER(userId));
     }
 
-    /**
-     * Cache user's current room
-     */
+    // Cache user's current room
     static async cacheUserRoom(userId: string, roomId: string | null): Promise<void> {
         if (roomId) {
             await CacheService.set(CACHE_KEYS.USER_ROOM(userId), roomId, CACHE_TTL.MEDIUM);
@@ -326,49 +262,35 @@ export class UserCache {
         }
     }
 
-    /**
-     * Get user's current room
-     */
+    // Get user's current room
     static async getUserRoom(userId: string): Promise<string | null> {
         return await CacheService.get<string>(CACHE_KEYS.USER_ROOM(userId));
     }
 
-    /**
-     * Set user online status
-     */
+    // Set user online status
     static async setOnline(userId: string): Promise<void> {
         await CacheService.sAdd(CACHE_KEYS.ONLINE_USERS, userId);
     }
 
-    /**
-     * Set user offline status
-     */
+    // Set user offline status
     static async setOffline(userId: string): Promise<void> {
         await CacheService.sRem(CACHE_KEYS.ONLINE_USERS, userId);
     }
 
-    /**
-     * Check if user is online
-     */
+    // Check if user is online
     static async isOnline(userId: string): Promise<boolean> {
         return await CacheService.sIsMember(CACHE_KEYS.ONLINE_USERS, userId);
     }
 
-    /**
-     * Get all online users
-     */
+    // Get all online users
     static async getOnlineUsers(): Promise<string[]> {
         return await CacheService.sMembers(CACHE_KEYS.ONLINE_USERS);
     }
 }
 
-/**
- * Session and authentication caching
- */
+// Session and authentication caching
 export class SessionCache {
-    /**
-     * Store refresh token with userId mapping
-     */
+    // Store refresh token with userId mapping
     static async storeRefreshToken(
         userId: string,
         token: string,
@@ -388,23 +310,16 @@ export class SessionCache {
         );
     }
 
-    /**
-     * Get refresh token data
-     */
+    // Get refresh token data
     static async getRefreshToken(token: string): Promise<{ userId: string } | null> {
         return await CacheService.get(CACHE_KEYS.REFRESH_TOKEN(token));
     }
-
-    /**
-     * Delete refresh token by token string
-     */
+    // Delete refresh token by token string
     static async deleteRefreshToken(token: string): Promise<void> {
         await CacheService.del(CACHE_KEYS.REFRESH_TOKEN(token));
     }
 
-    /**
-     * Delete refresh token by userId (for logout)
-     */
+    // Delete refresh token by userId (for logout)
     static async deleteRefreshTokenByUserId(userId: string): Promise<void> {
         // Get the current refresh token for this user
         const token = await CacheService.get<string>(CACHE_KEYS.USER_REFRESH_TOKEN(userId));
@@ -420,9 +335,7 @@ export class SessionCache {
         }
     }
 
-    /**
-     * Store user session
-     */
+    // Store user session
     static async storeSession(userId: string, sessionData: any): Promise<void> {
         await CacheService.set(
             CACHE_KEYS.USER_SESSION(userId),
@@ -431,16 +344,12 @@ export class SessionCache {
         );
     }
 
-    /**
-     * Get user session
-     */
+    // Get user session
     static async getSession(userId: string): Promise<any | null> {
         return await CacheService.get(CACHE_KEYS.USER_SESSION(userId));
     }
 
-    /**
-     * Delete user session
-     */
+    // Delete user session
     static async deleteSession(userId: string): Promise<void> {
         await CacheService.del(CACHE_KEYS.USER_SESSION(userId));
     }

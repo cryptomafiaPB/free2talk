@@ -1,15 +1,9 @@
-/**
- * Profile Service
- * 
- * Handles user profile data, statistics, and updates.
- */
-
 import { db } from '../db/index.js';
 import { users, rooms, roomParticipants, randomCallSessions, userCallPreferences } from '../db/schema.js';
 import { eq, and, or, desc, sql, count } from 'drizzle-orm';
 import { UserCache } from './cache.service.js';
 
-// ==================== Types ====================
+// -------------------- Types 
 
 export interface UserProfile {
     id: string;
@@ -40,11 +34,9 @@ export interface ProfileUpdateData {
     learningLanguages?: string[];
 }
 
-// ==================== Profile Functions ====================
+// -------------------- Profile Functions 
 
-/**
- * Get user profile by ID (excludes sensitive data)
- */
+// Get user profile by ID (excludes sensitive data)
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
     // Check cache first
     const cached = await UserCache.getUser(userId);
@@ -77,9 +69,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile | null
     return user;
 }
 
-/**
- * Get user profile by username
- */
+// Get user profile by username
 export async function getUserByUsername(username: string): Promise<UserProfile | null> {
     const [user] = await db
         .select({
@@ -101,9 +91,7 @@ export async function getUserByUsername(username: string): Promise<UserProfile |
     return user || null;
 }
 
-/**
- * Get user statistics
- */
+// Get user statistics
 export async function getUserStats(userId: string): Promise<UserStats> {
     // Get room stats
     const roomStats = await db
@@ -142,9 +130,8 @@ export async function getUserStats(userId: string): Promise<UserStats> {
     };
 }
 
-/**
- * Get user's recent activity
- */
+
+// Get user's recent activity
 export async function getUserActivity(userId: string, limit: number = 10) {
     // Get recent room participations
     const recentRooms = await db
@@ -204,9 +191,8 @@ export async function getUserActivity(userId: string, limit: number = 10) {
     return allActivity;
 }
 
-/**
- * Get user's created rooms
- */
+
+// Get user's created rooms
 export async function getUserRooms(userId: string, limit: number = 20) {
     return db
         .select({
@@ -225,9 +211,7 @@ export async function getUserRooms(userId: string, limit: number = 20) {
         .limit(limit);
 }
 
-/**
- * Update user profile
- */
+// Update user profile
 export async function updateProfile(userId: string, data: ProfileUpdateData): Promise<UserProfile | null> {
     // Validate data
     const updateData: Record<string, unknown> = { updatedAt: new Date() };
@@ -273,9 +257,8 @@ export async function updateProfile(userId: string, data: ProfileUpdateData): Pr
     return updated;
 }
 
-/**
- * Check if username is available
- */
+
+// Check if username is available
 export async function isUsernameAvailable(username: string, excludeUserId?: string): Promise<boolean> {
     const [existing] = await db
         .select({ id: users.id })
@@ -288,9 +271,7 @@ export async function isUsernameAvailable(username: string, excludeUserId?: stri
     return false;
 }
 
-/**
- * Update username
- */
+// Update username
 export async function updateUsername(userId: string, newUsername: string): Promise<boolean> {
     const username = newUsername.toLowerCase().trim();
 

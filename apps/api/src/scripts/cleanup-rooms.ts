@@ -54,13 +54,13 @@ async function cleanup() {
                 .set({ isActive: false, closedAt: new Date() })
                 .where(eq(rooms.id, room.id));
 
-            console.log('  ✓ Room closed');
+            console.log('Room closed');
         } else {
             console.log(`  -> Room has ${reallyActiveCount} online participant(s), keeping active`);
         }
     }
 
-    console.log('\n✓ Cleanup complete');
+    console.log('\nCleanup complete');
     process.exit(0);
 }
 

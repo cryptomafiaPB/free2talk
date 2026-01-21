@@ -23,37 +23,39 @@ import type {
     RandomCallPartner,
 } from '@free2talk/shared';
 
-// ==================== Redis Key Definitions ====================
+// ----------------------- Redis Key Definitions 
 
 export const RANDOM_KEYS = {
-    /** Global queue for random matching (all users) */
+    // Global queue for random matching (all users)
     QUEUE_GLOBAL: 'random:queue:global',
-    /** Language-specific queue */
+    // Language-specific queues for preferred matching
     QUEUE_LANGUAGE: (lang: string) => `random:queue:lang:${lang.toLowerCase()}`,
-    /** User's queue entry timestamp */
+    // User's queue entry timestamp
     QUEUE_TIME: (userId: string) => `random:queue_time:${userId}`,
-    /** User's current preferences */
+    // User's current preferences
     USER_PREFERENCES: (userId: string) => `random:preferences:${userId}`,
-    /** Active call session */
+    // Active call session data
     ACTIVE_CALL: (sessionId: string) => `random:call:${sessionId}`,
-    /** User's current call session ID */
+    // User's current call session ID
     USER_CALL: (userId: string) => `random:user_call:${userId}`,
-    /** Set of all active call session IDs */
+    // Set of all active call session IDs
     ACTIVE_CALLS_SET: 'random:active_calls',
-    /** Global stats hash */
+    // Global stats hash
     STATS: 'random:stats',
-    /** Set of all users currently in random feature */
+    // Set of all users currently in random feature
     ACTIVE_USERS: 'random:active_users',
-    /** Blocked user pairs (to avoid re-matching) */
+    // Blocked user pairs (to avoid re-matching)
     BLOCKED_PAIR: (user1: string, user2: string) => {
         const sorted = [user1, user2].sort();
         return `random:blocked:${sorted[0]}:${sorted[1]}`;
     },
-    /** User's blocked list */
+    // User's blocked list
     USER_BLOCKED: (userId: string) => `random:user_blocked:${userId}`,
 } as const;
 
-// ==================== Types ====================
+
+
+// ----------------------- Types 
 
 interface QueuedUser {
     userId: string;
@@ -74,11 +76,10 @@ interface ActiveCallData {
     state: 'connecting' | 'connected' | 'ended';
 }
 
-// ==================== Queue Management ====================
+// ----------------------- Queue Management 
 
-/**
- * Add user to the matching queue
- */
+
+// Add user to the matching queue
 export async function addToQueue(
     userId: string,
     socketId: string,
@@ -142,9 +143,8 @@ export async function addToQueue(
     }
 }
 
-/**
- * Remove user from all queues
- */
+
+// Remove user from all queues
 export async function removeFromQueue(userId: string): Promise<void> {
     try {
         // Get user preferences to know which language queues to remove from
@@ -180,20 +180,17 @@ export async function removeFromQueue(userId: string): Promise<void> {
     }
 }
 
-/**
- * Check if user is in queue
- */
+// Check if user is in queue
 export async function isInQueue(userId: string): Promise<boolean> {
     const queueTime = await redis.get(RANDOM_KEYS.QUEUE_TIME(userId));
     return queueTime !== null;
 }
 
-// ==================== Matching Engine ====================
+// ----------------------- Matching Engine 
 
-/**
- * Find a match for the given user
- * Returns matched userId or null if no match found
- */
+
+// Find a match for the given user
+// Returns matched userId or null if no match found
 export async function findMatch(userId: string): Promise<{
     matchedUserId: string | null;
     matchedLanguage: string | null;
@@ -254,9 +251,8 @@ export async function findMatch(userId: string): Promise<{
     }
 }
 
-/**
- * Process matching for a specific user (called when user joins queue)
- */
+
+// Process matching for a specific user (called when user joins queue)
 export async function processMatchForUser(
     userId: string,
     getUserSocketId: (userId: string) => string | undefined
@@ -300,11 +296,9 @@ export async function processMatchForUser(
     };
 }
 
-// ==================== Session Management ====================
+// Session Management 
 
-/**
- * Create a new call session
- */
+// Create a new call session
 export async function createCallSession(
     user1Id: string,
     user1SocketId: string,
@@ -361,26 +355,20 @@ export async function createCallSession(
     return session;
 }
 
-/**
- * Get call session by ID
- */
+// Get call session by ID
 export async function getCallSession(sessionId: string): Promise<ActiveCallData | null> {
     const data = await redis.get(RANDOM_KEYS.ACTIVE_CALL(sessionId));
     return data ? JSON.parse(data) : null;
 }
 
-/**
- * Get user's current call session
- */
+// Get user's current call session
 export async function getUserCallSession(userId: string): Promise<ActiveCallData | null> {
     const sessionId = await redis.get(RANDOM_KEYS.USER_CALL(userId));
     if (!sessionId) return null;
     return getCallSession(sessionId);
 }
 
-/**
- * Mark call as connected
- */
+// Mark call as connected
 export async function markCallConnected(sessionId: string): Promise<void> {
     const session = await getCallSession(sessionId);
     if (session) {
@@ -395,9 +383,7 @@ export async function markCallConnected(sessionId: string): Promise<void> {
     }
 }
 
-/**
- * End a call session
- */
+// End a call session
 export async function endCallSession(
     sessionId: string,
     reason: string
@@ -420,9 +406,8 @@ export async function endCallSession(
     return { user1Id: session.user1Id, user2Id: session.user2Id };
 }
 
-/**
- * Get the partner's socket ID in a call
- */
+
+// Get the partner's socket ID in a call
 export async function getPartnerSocketId(
     sessionId: string,
     userId: string
@@ -438,9 +423,7 @@ export async function getPartnerSocketId(
     return null;
 }
 
-/**
- * Get the partner's user ID in a call
- */
+// Get the partner's user ID in a call
 export async function getPartnerId(
     sessionId: string,
     userId: string
@@ -456,11 +439,9 @@ export async function getPartnerId(
     return null;
 }
 
-// ==================== User Info ====================
+// ------------------- User Info 
 
-/**
- * Get user info for matching display
- */
+// Get user info for matching display
 export async function getUserInfo(userId: string): Promise<RandomCallPartner | null> {
     try {
         const [user] = await db
@@ -488,11 +469,9 @@ export async function getUserInfo(userId: string): Promise<RandomCallPartner | n
     }
 }
 
-// ==================== Stats ====================
+// ----------------- Stats 
 
-/**
- * Get current random call stats
- */
+// Get current random call stats
 export async function getStats(): Promise<RandomCallStats> {
     try {
         const [activeCallsCount, activeUsersCount, globalQueueLength] = await Promise.all([
@@ -528,11 +507,9 @@ export async function getStats(): Promise<RandomCallStats> {
     }
 }
 
-// ==================== Cleanup ====================
+//  Cleanup 
 
-/**
- * Clean up stale queue entries (run periodically)
- */
+// Clean up stale queue entries (run periodically)
 export async function cleanupStaleEntries(): Promise<number> {
     const maxQueueAge = 60 * 1000; // 60 seconds
     const now = Date.now();
@@ -567,9 +544,7 @@ export async function cleanupStaleEntries(): Promise<number> {
     }
 }
 
-/**
- * Clean up stale call sessions
- */
+// Clean up stale call sessions 
 export async function cleanupStaleSessions(): Promise<number> {
     const maxConnectingAge = 15 * 1000; // 15 seconds to establish connection
     const maxCallAge = 60 * 60 * 1000; // 1 hour max call duration
@@ -610,27 +585,21 @@ export async function cleanupStaleSessions(): Promise<number> {
     }
 }
 
-// ==================== User Blocking ====================
+// -------------------- User Blocking 
 
-/**
- * Block a user (prevent future matching)
- */
+// Block a user (prevent future matching)
 export async function blockUser(userId: string, blockedUserId: string): Promise<void> {
     await redis.sAdd(RANDOM_KEYS.USER_BLOCKED(userId), blockedUserId);
     // Set expiry on the set (30 days)
     await redis.expire(RANDOM_KEYS.USER_BLOCKED(userId), 30 * 24 * 60 * 60);
 }
 
-/**
- * Check if user is blocked
- */
+// Check if user is blocked
 export async function isUserBlocked(userId: string, targetUserId: string): Promise<boolean> {
     return redis.sIsMember(RANDOM_KEYS.USER_BLOCKED(userId), targetUserId);
 }
 
-/**
- * Remove user from active users set (cleanup helper)
- */
+// Remove user from active users set (cleanup helper)
 export async function removeUserFromActiveSet(userId: string): Promise<void> {
     await redis.sRem(RANDOM_KEYS.ACTIVE_USERS, userId);
 }

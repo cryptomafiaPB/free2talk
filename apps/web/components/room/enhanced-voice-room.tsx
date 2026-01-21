@@ -6,7 +6,6 @@
  * - Proper voice-participant state synchronization
  * - Real-time updates for joins, leaves, kicks, ownership changes
  * - Reliable voice connection with existing producer consumption
- * - New redesigned layout inspired by free4talk.com
  */
 
 'use client';

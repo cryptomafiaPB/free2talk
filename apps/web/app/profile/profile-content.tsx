@@ -42,7 +42,7 @@ import { useAuthStore } from '@/lib/stores';
 import type { UserActivity, UserRoom } from '@/lib/services/profile.service';
 import { EditProfileModal } from './edit-profile-modal';
 
-// ==================== Constants ====================
+//  Constants 
 
 const LANGUAGE_FLAGS: Record<string, string> = {
     english: '🇺🇸',
@@ -82,7 +82,7 @@ function getLanguageFlag(language: string): string {
     return LANGUAGE_FLAGS[key] || '🌐';
 }
 
-// ==================== Main Component ====================
+// ------------------------ Main Component 
 
 export function ProfileContent() {
     const { profile, activity, rooms, isLoading, error, refetch } = useProfile();
@@ -289,7 +289,7 @@ export function ProfileContent() {
     );
 }
 
-// ==================== Stat Card ====================
+// ------------------------ Stat Card 
 
 interface StatCardProps {
     icon: React.ReactNode;
@@ -323,7 +323,7 @@ function StatCard({ icon, value, label, color = 'primary' }: StatCardProps) {
     );
 }
 
-// ==================== Activity Section ====================
+// ------------------------ Activity Section 
 
 interface ActivitySectionProps {
     activity: UserActivity[];
@@ -403,7 +403,7 @@ function ActivityItem({ activity }: { activity: UserActivity }) {
     );
 }
 
-// ==================== Rooms Section ====================
+// ------------------------ Rooms Section 
 
 interface RoomsSectionProps {
     rooms: UserRoom[];
@@ -452,7 +452,7 @@ function RoomsSection({ rooms }: RoomsSectionProps) {
     );
 }
 
-// ==================== Quick Settings Section ====================
+// -------------------- Quick Settings Section 
 
 interface QuickSettingsSectionProps {
     onLogout: () => void;
@@ -507,7 +507,7 @@ function SettingsLink({ href, icon, label }: { href: string; icon: React.ReactNo
     );
 }
 
-// ==================== Skeleton ====================
+// -------------------- Skeleton 
 
 function ProfileSkeleton() {
     return (
@@ -561,7 +561,7 @@ function ProfileSkeleton() {
     );
 }
 
-// ==================== Helpers ====================
+// -------------------- Helpers 
 
 function formatMinutes(minutes: number): string {
     if (minutes < 60) return `${minutes}m`;

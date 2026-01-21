@@ -2,10 +2,10 @@ import type { Request, Response, NextFunction } from 'express';
 import { googleAuthService } from '../services/google-auth.service.js';
 import { AppError } from '../utils/app-error.js';
 
-/**
- * Google OAuth sign-in/sign-up controller
- * Receives Google ID token or access token from frontend and returns JWT tokens
- */
+
+// Google OAuth sign-in/sign-up controller
+// Receives Google ID token or access token from frontend and returns JWT tokens
+
 export async function googleSignIn(req: Request, res: Response, next: NextFunction) {
     try {
         const { idToken, accessToken } = req.body;
@@ -20,7 +20,7 @@ export async function googleSignIn(req: Request, res: Response, next: NextFuncti
         res.cookie('refreshToken', result.tokens.refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'lax',
+            sameSite: 'none', // lax for more safety but for cross-site needs 'none'
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
             path: '/',
         });

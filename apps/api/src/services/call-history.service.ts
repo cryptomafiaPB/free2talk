@@ -1,15 +1,8 @@
-/**
- * Call History Service
- * 
- * Handles persistent storage and retrieval of random call history
- * for users to view their call stats and history.
- */
-
 import { db } from '../db/index.js';
 import { randomCallSessions, callRatings, userCallPreferences, users } from '../db/schema.js';
 import { eq, desc, or, and, sql } from 'drizzle-orm';
 
-// ==================== Types ====================
+// ---------------- Types
 
 export interface CallHistoryEntry {
     id: string;
@@ -35,11 +28,10 @@ export interface UserCallStats {
     longestCallMinutes: number;
 }
 
-// ==================== Call Session Recording ====================
+// -------------------- Call Session Recording 
 
-/**
- * Record a new call session to the database
- */
+
+// Record a new call session to the database
 export async function recordCallStart(
     sessionId: string,
     user1Id: string,
@@ -60,9 +52,7 @@ export async function recordCallStart(
     }
 }
 
-/**
- * Update call session when connection is established
- */
+// Update call session when connection is established
 export async function recordCallConnected(sessionId: string): Promise<void> {
     try {
         await db.update(randomCallSessions)
@@ -74,9 +64,8 @@ export async function recordCallConnected(sessionId: string): Promise<void> {
     }
 }
 
-/**
- * Record call end and calculate duration
- */
+
+// Record call end and calculate duration
 export async function recordCallEnd(
     sessionId: string,
     endReason: string
@@ -115,9 +104,7 @@ export async function recordCallEnd(
     }
 }
 
-/**
- * Update user's aggregate call stats
- */
+// Update user's aggregate call stats
 async function updateUserStats(userId: string, durationSeconds: number): Promise<void> {
     const durationMinutes = Math.ceil(durationSeconds / 60);
 
@@ -142,11 +129,9 @@ async function updateUserStats(userId: string, durationSeconds: number): Promise
     }
 }
 
-// ==================== Call History Retrieval ====================
+// -------------------- Call History Retrieval 
 
-/**
- * Get call history for a user
- */
+// Get call history for a user
 export async function getCallHistory(
     userId: string,
     limit: number = 20,
@@ -224,9 +209,7 @@ export async function getCallHistory(
     }
 }
 
-/**
- * Get user's aggregate call stats
- */
+// Get user's aggregate call stats
 export async function getUserCallStats(userId: string): Promise<UserCallStats> {
     try {
         // Get from preferences table first
@@ -296,9 +279,7 @@ export async function getUserCallStats(userId: string): Promise<UserCallStats> {
     }
 }
 
-/**
- * Save a call rating
- */
+// Save a call rating
 export async function saveCallRating(
     sessionId: string,
     userId: string,

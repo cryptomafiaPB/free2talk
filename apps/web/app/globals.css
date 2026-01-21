@@ -3,10 +3,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* ============================================================================
-   FREE2TALK DESIGN SYSTEM - CSS VARIABLES
-   ============================================================================ */
-
 :root {
   /* Primary - Purple accent (signature color) */
   --color-primary-50: #f5f3ff;
@@ -92,9 +88,7 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
-/* ============================================================================
-   TAILWIND THEME INLINE
-   ============================================================================ */
+/* TAILWIND THEME INLINE */
 
 @theme inline {
   /* Colors */
@@ -185,9 +179,8 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
-/* ============================================================================
-   BASE STYLES
-   ============================================================================ */
+
+/* BASE STYLES */
 
 html {
   scroll-behavior: smooth;
@@ -237,9 +230,7 @@ body {
   display: none;
 }
 
-/* ============================================================================
-   CUSTOM ANIMATIONS
-   ============================================================================ */
+/*  CUSTOM ANIMATIONS */
 
 @keyframes soundWave {
 
@@ -289,9 +280,7 @@ body {
   }
 }
 
-/* ============================================================================
-   SAFE AREA (for mobile devices with notches)
-   ============================================================================ */
+/* SAFE AREA (for mobile devices with notches) */
 
 .safe-area-top {
   padding-top: env(safe-area-inset-top);
@@ -309,18 +298,14 @@ body {
   padding-right: env(safe-area-inset-right);
 }
 
-/* ============================================================================
-   FOCUS STYLES
-   ============================================================================ */
+/* FOCUS STYLES */
 
 *:focus-visible {
   outline: 2px solid var(--color-primary-500);
   outline-offset: 2px;
 }
 
-/* ============================================================================
-   UTILITIES
-   ============================================================================ */
+/*   UTILITIES */
 
 /* Gradient text */
 .text-gradient {
@@ -397,6 +382,7 @@ body {
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
   }

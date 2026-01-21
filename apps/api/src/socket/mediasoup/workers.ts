@@ -45,7 +45,7 @@ export async function initMediasoupWorkers() {
                         },
                     ],
                 });
-                console.log(`[Worker ${i + 1}] ✅ WebRTC server initialized`);
+                console.log(`[Worker ${i + 1}] WebRTC server initialized`);
             } catch (error) {
                 console.error(`[Worker ${i + 1}] Failed to create WebRTC server:`, error);
                 // Non-fatal - WebRTC transports will still work

@@ -1,19 +1,10 @@
-/**
- * Random Call Controller
- * 
- * REST API endpoints for random call feature.
- * Handles user preferences and stats retrieval.
- */
-
 import { Request, Response, NextFunction } from 'express';
 import * as randomService from '../services/random.service.js';
 import * as randomAnalytics from '../services/random-analytics.service.js';
 import { AppError } from '../utils/app-error.js';
 
-/**
- * Get current random call statistics
- * GET /api/random/stats
- */
+// Get current random call statistics
+// GET /api/random/stats
 export async function getStats(req: Request, res: Response, next: NextFunction) {
     try {
         const stats = await randomService.getStats();
@@ -26,10 +17,9 @@ export async function getStats(req: Request, res: Response, next: NextFunction) 
     }
 }
 
-/**
- * Get user's call preferences
- * GET /api/random/preferences
- */
+
+// Get user's call preferences
+// GET /api/random/preferences
 export async function getPreferences(req: Request, res: Response, next: NextFunction) {
     try {
         const userId = req.user!.userId;
@@ -44,10 +34,9 @@ export async function getPreferences(req: Request, res: Response, next: NextFunc
     }
 }
 
-/**
- * Update user's call preferences
- * PUT /api/random/preferences
- */
+
+// Update user's call preferences
+// PUT /api/random/preferences
 export async function updatePreferences(req: Request, res: Response, next: NextFunction) {
     try {
         const userId = req.user!.userId;
@@ -76,10 +65,9 @@ export async function updatePreferences(req: Request, res: Response, next: NextF
     }
 }
 
-/**
- * Get user's call history
- * GET /api/random/history
- */
+
+// Get user's call history
+// GET /api/random/history
 export async function getCallHistory(req: Request, res: Response, next: NextFunction) {
     try {
         const userId = req.user!.userId;
@@ -97,10 +85,9 @@ export async function getCallHistory(req: Request, res: Response, next: NextFunc
     }
 }
 
-/**
- * Get user's personal call statistics
- * GET /api/random/my-stats
- */
+
+// Get user's personal call statistics
+// GET /api/random/my-stats
 export async function getMyStats(req: Request, res: Response, next: NextFunction) {
     try {
         const userId = req.user!.userId;
@@ -115,10 +102,9 @@ export async function getMyStats(req: Request, res: Response, next: NextFunction
     }
 }
 
-/**
- * Block a user from future random matches
- * POST /api/random/block/:userId
- */
+
+// Block a user from future random matches
+// POST /api/random/block/:userId
 export async function blockUser(req: Request, res: Response, next: NextFunction) {
     try {
         const userId = req.user!.userId;

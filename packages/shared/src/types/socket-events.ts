@@ -27,7 +27,7 @@ export interface RoomSyncResponse {
     producers?: Array<{ userId: string; producerId: string; paused: boolean }>;
 }
 
-// Client → Server Events
+// Client -> Server Events
 export interface ClientToServerEvents extends RandomClientToServerEvents {
     // Hallway
     'hallway:subscribe': () => void;
@@ -62,7 +62,7 @@ export interface ClientToServerEvents extends RandomClientToServerEvents {
     ) => void;
 }
 
-// Server → Client Events
+// Server -> Client Events
 export interface ServerToClientEvents extends RandomServerToClientEvents {
     // Hallway
     'hallway:room-created': (room: RoomSummary) => void;

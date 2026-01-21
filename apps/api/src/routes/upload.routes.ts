@@ -29,10 +29,8 @@ const upload = multer({
     },
 });
 
-/**
- * Upload avatar
- * POST /api/v1/upload/avatar
- */
+// Upload avatar
+// POST /api/v1/upload/avatar
 uploadRouter.post(
     '/avatar',
     authMiddleware,
@@ -85,10 +83,8 @@ uploadRouter.post(
     }
 );
 
-/**
- * Delete avatar
- * DELETE /api/v1/upload/avatar
- */
+// Delete avatar
+// DELETE /api/v1/upload/avatar
 uploadRouter.delete(
     '/avatar',
     authMiddleware,

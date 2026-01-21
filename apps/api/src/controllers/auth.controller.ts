@@ -28,7 +28,7 @@ export async function registerController(req: Request, res: Response, next: Func
         res.cookie('refreshToken', result.tokens.refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'none', // lax for more safety
+            sameSite: 'none', // lax for more safety but for cross-site needs none
             maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
         });
 
@@ -60,7 +60,7 @@ export async function loginController(req: Request, res: Response, next: Functio
         res.cookie('refreshToken', result.tokens.refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'none', // lax for more safety
+            sameSite: 'none', // lax for more safety, but for cross-site needs 'none'
             maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
         });
 
@@ -92,7 +92,7 @@ export async function refreshTokenController(req: Request, res: Response, next: 
         res.cookie('refreshToken', tokens.refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'none', // lax for more safety 
+            sameSite: 'none', // lax for more safety but for cross-site needs 'none'
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
 
@@ -150,10 +150,6 @@ export async function getMeController(req: Request, res: Response, next: Functio
         });
     } catch (error) {
         console.error('[AuthController.me] Error:', error);
-        // res.status(500).json({
-        //     success: false,
-        //     message: error instanceof Error ? error.message : 'Failed to get user info'
-        // });
         next(error);
     }
 }

@@ -1,16 +1,11 @@
-/**
- * User Routes
- * 
- * Routes for user profile management.
- */
-
 import { Router } from 'express';
 import * as userController from '../controllers/user.controller.js';
 import { authMiddleware, optionalAuthMiddleware } from '../middleware/auth.middleware.js';
 
 export const userRouter = Router();
 
-// ==================== Authenticated Routes ====================
+
+// --------------------- Authenticated Routes 
 
 // Get current user's profile (requires auth)
 userRouter.get('/me', authMiddleware, userController.getMyProfile);
@@ -30,7 +25,7 @@ userRouter.get('/me/rooms', authMiddleware, userController.getMyRooms);
 // Get current user's stats
 userRouter.get('/me/stats', authMiddleware, userController.getMyStats);
 
-// ==================== Public Routes ====================
+// --------------------- Public Routes
 
 // Check username availability (optional auth for excluding own username)
 userRouter.get('/check-username/:username', optionalAuthMiddleware, userController.checkUsername);

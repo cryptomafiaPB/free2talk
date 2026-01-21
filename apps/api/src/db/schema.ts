@@ -71,16 +71,16 @@ export const randomCallSessions = pgTable('random_call_sessions', {
     id: uuid('id').primaryKey().defaultRandom(),
     user1Id: uuid('user1_id').references(() => users.id).notNull(),
     user2Id: uuid('user2_id').references(() => users.id).notNull(),
-    /** Language matched (null = random global match) */
+    // Language matched (null = random global match) 
     matchedLanguage: varchar('matched_language', { length: 50 }),
     startedAt: timestamp('started_at').defaultNow().notNull(),
     connectedAt: timestamp('connected_at'),
     endedAt: timestamp('ended_at'),
-    /** Duration in seconds */
+    // Duration in seconds
     durationSeconds: integer('duration_seconds'),
-    /** WebRTC connection type used */
+    // WebRTC connection type used
     connectionType: varchar('connection_type', { length: 20 }),
-    /** Reason for call ending */
+    // Reason for call ending
     endReason: varchar('end_reason', { length: 50 }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
 });
@@ -89,13 +89,13 @@ export const randomCallSessions = pgTable('random_call_sessions', {
 export const userCallPreferences = pgTable('user_call_preferences', {
     id: uuid('id').primaryKey().defaultRandom(),
     userId: uuid('user_id').references(() => users.id).notNull().unique(),
-    /** Selected languages for preference matching */
+    // Selected languages for preference matching
     preferredLanguages: text('preferred_languages').array(),
-    /** Whether language preference is enabled */
+    // Whether language preference is enabled
     languagePreferenceEnabled: boolean('language_preference_enabled').default(false),
-    /** Users blocked from matching */
+    // Users blocked from matching
     blockedUsers: text('blocked_users').array().default([]),
-    /** Stats */
+    // Stats
     totalCallsCompleted: integer('total_calls_completed').default(0),
     totalCallMinutes: integer('total_call_minutes').default(0),
     createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -106,20 +106,23 @@ export const userCallPreferences = pgTable('user_call_preferences', {
 export const callRatings = pgTable('call_ratings', {
     id: uuid('id').primaryKey().defaultRandom(),
     sessionId: uuid('session_id').references(() => randomCallSessions.id).notNull(),
-    /** User who gave the rating */
+    // User who gave the rating
     ratingFromUserId: uuid('rating_from_user_id').references(() => users.id).notNull(),
-    /** Rating 1-5 stars */
+    // Rating 1-5 stars
     rating: integer('rating').notNull(),
-    /** Optional feedback text */
+    // Optional feedback text
     feedback: text('feedback'),
-    /** Was this reported as abuse */
+    // Was this reported as abuse
     reportedAsAbuse: boolean('reported_as_abuse').default(false),
-    /** Report reason if reported */
+    // Report reason if reported
     reportReason: varchar('report_reason', { length: 200 }),
     createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
-// Relations
+
+
+//------------------------ Relations
+
 export const usersRelations = relations(users, ({ many }) => ({
     ownedRooms: many(rooms),
     roomParticipations: many(roomParticipants),

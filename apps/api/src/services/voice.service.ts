@@ -72,7 +72,7 @@ interface ParticipantState {
 const rooms = new Map<string, RoomState>();
 
 
-//  * Create or get a router for a room
+//  Create or get a router for a room
 
 export async function getOrCreateRouter(roomId: string): Promise<Router> {
     let room = rooms.get(roomId);
@@ -102,13 +102,13 @@ export async function getOrCreateRouter(roomId: string): Promise<Router> {
 }
 
 
-//  * Get room state
+//  Get room state
 
 export function getRoomState(roomId: string): RoomState | undefined {
     return rooms.get(roomId);
 }
 
-//  * Get or create participant state
+// Get or create participant state
 
 export function getOrCreateParticipant(roomId: string, userId: string): ParticipantState {
     const room = rooms.get(roomId);
@@ -131,7 +131,7 @@ export function getOrCreateParticipant(roomId: string, userId: string): Particip
     return participant;
 }
 
-//  * Get RTP capabilities for the room router
+//  Get RTP capabilities for the room router
 
 export async function getRtpCapabilities(roomId: string): Promise<RtpCapabilities> {
     const router = await getOrCreateRouter(roomId);
@@ -139,7 +139,7 @@ export async function getRtpCapabilities(roomId: string): Promise<RtpCapabilitie
 }
 
 
-//  * Create a WebRTC transport for a participant
+//  Create a WebRTC transport for a participant
 
 export async function createTransport(
     roomId: string,
@@ -189,7 +189,7 @@ export async function createTransport(
 }
 
 
-// * Connect a transport with DTLS parameters
+// Connect a transport with DTLS parameters
 
 export async function connectTransport(
     roomId: string,
@@ -221,11 +221,11 @@ export async function connectTransport(
 
     await transport.connect({ dtlsParameters });
 
-    console.log(`[ConnectTransport] ✅ ${transportType} transport connected successfully! User: ${userId}, Transport: ${transportId}`);
+    console.log(`[ConnectTransport] ${transportType} transport connected successfully! User: ${userId}, Transport: ${transportId}`);
 }
 
 
-//  * Create a producer (user starts sending audio)
+//  Create a producer (user starts sending audio)
 
 export async function produce(
     roomId: string,
@@ -280,7 +280,7 @@ export async function produce(
 }
 
 
-//  * Create a consumer (user receives audio from another user)
+// Create a consumer (user receives audio from another user)
 
 export async function consume(
     roomId: string,
@@ -355,7 +355,7 @@ export async function consume(
 }
 
 
-//  * Pause/resume producer (mute/unmute)
+//  Pause/resume producer (mute/unmute)
 
 export async function setProducerPaused(
     roomId: string,
@@ -378,7 +378,7 @@ export async function setProducerPaused(
 }
 
 
-//  * Get all producers in a room except the given user
+//  Get all producers in a room except the given user
 
 export function getOtherProducers(roomId: string, userId: string): Array<{ userId: string; producerId: string; paused: boolean }> {
     const room = rooms.get(roomId);
@@ -402,7 +402,7 @@ export function getOtherProducers(roomId: string, userId: string): Array<{ userI
 }
 
 
-//  * Get mute states for all participants in a room
+//  Get mute states for all participants in a room
 
 export function getParticipantMuteStates(roomId: string): Map<string, boolean> {
     const room = rooms.get(roomId);
@@ -422,7 +422,7 @@ export function getParticipantMuteStates(roomId: string): Map<string, boolean> {
 }
 
 
-//  * Check if a specific user is muted
+//  Check if a specific user is muted
 
 export function isParticipantMuted(roomId: string, userId: string): boolean {
     const room = rooms.get(roomId);
@@ -435,13 +435,13 @@ export function isParticipantMuted(roomId: string, userId: string): boolean {
 }
 
 
-//  * Get AudioLevelObserver for a room (for speaking detection)
+//  Get AudioLevelObserver for a room (for speaking detection)
 
 export function getAudioLevelObserver(roomId: string): AudioLevelObserver | undefined {
     return rooms.get(roomId)?.audioLevelObserver;
 }
 
-//  * Clean up participant resources
+//  Clean up participant resources
 
 export async function cleanupParticipant(roomId: string, userId: string): Promise<void> {
     const room = rooms.get(roomId);
@@ -489,7 +489,7 @@ export async function cleanupParticipant(roomId: string, userId: string): Promis
 }
 
 
-//  * Clean up entire room
+//  Clean up entire room
 
 export async function cleanupRoom(roomId: string): Promise<void> {
     const room = rooms.get(roomId);
@@ -512,14 +512,14 @@ export async function cleanupRoom(roomId: string): Promise<void> {
 }
 
 
-//  * Get all active rooms
+//  Get all active rooms
 
 export function getActiveRooms(): string[] {
     return Array.from(rooms.keys());
 }
 
 
-//  * Get participant count in a room
+//  Get participant count in a room
 
 export function getParticipantCount(roomId: string): number {
     const room = rooms.get(roomId);

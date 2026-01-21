@@ -11,6 +11,7 @@ export function errorHandler(
     res: Response,
     next: NextFunction
 ) {
+
     // Log error to file (append)
     // const logPath = path.join(__dirname, '../../logs/error.log');
     // const logMsg = `[${new Date().toISOString()}] ${err.stack || err.message}\n`;
@@ -27,6 +28,7 @@ export function errorHandler(
         console.error('Error:', err);
     }
 
+
     if (err instanceof SyntaxError && 'body' in err) {
         return res.status(400).json({
             error: {
@@ -35,6 +37,7 @@ export function errorHandler(
         });
     }
 
+    // Zod validation error
     if (err instanceof z.ZodError) {
         return res.status(400).json({
             error: {
@@ -44,6 +47,7 @@ export function errorHandler(
         });
     }
 
+    // Custom application error
     if (err instanceof AppError) {
         return res.status(err.statusCode).json({
             error: {

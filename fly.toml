@@ -1,0 +1,143 @@
+# Fly.io Configuration for free2talk Backend API
+# Deploy with: fly deploy
+
+app = "free2talk-api"
+primary_region = "sin"  # Singapore - change to your preferred region
+
+# Build configuration
+[build]
+  builder = "heroku"
+  dockerfile = "./apps/api/Dockerfile"
+  
+[env]
+  NODE_ENV = "production"
+  PORT = "3001"
+
+# Services and port mapping
+[[services]]
+  internal_port = 3001
+  processes = ["app"]
+  protocol = "tcp"
+  
+  [services.ports]
+    handlers = ["http"]
+    port = 80
+
+  [services.tcp_checks]
+    enabled = true
+    grace_period = "30s"
+    interval = "15s"
+    timeout = "10s"
+
+[[services]]
+  internal_port = 3001
+  processes = ["app"]
+  protocol = "tcp"
+  
+  [services.ports]
+    handlers = ["tls", "http"]
+    port = 443
+
+  [services.tcp_checks]
+    enabled = true
+    grace_period = "30s"
+    interval = "15s"
+    timeout = "10s"
+
+# MediaSoup UDP port range for WebRTC
+# Fly.io supports UDP on dynamic ports, but we need to expose a range
+[[services]]
+  internal_port = 10000
+  processes = ["app"]
+  protocol = "udp"
+  
+  [services.ports]
+    port = 10000
+
+[[services]]
+  internal_port = 10001
+  processes = ["app"]
+  protocol = "udp"
+  
+  [services.ports]
+    port = 10001
+
+[[services]]
+  internal_port = 10002
+  processes = ["app"]
+  protocol = "udp"
+  
+  [services.ports]
+    port = 10002
+
+[[services]]
+  internal_port = 10003
+  processes = ["app"]
+  protocol = "udp"
+  
+  [services.ports]
+    port = 10003
+
+[[services]]
+  internal_port = 10004
+  processes = ["app"]
+  protocol = "udp"
+  
+  [services.ports]
+    port = 10004
+
+[[services]]
+  internal_port = 10005
+  processes = ["app"]
+  protocol = "udp"
+  
+  [services.ports]
+    port = 10005
+
+[[services]]
+  internal_port = 10006
+  processes = ["app"]
+  protocol = "udp"
+  
+  [services.ports]
+    port = 10006
+
+[[services]]
+  internal_port = 10007
+  processes = ["app"]
+  protocol = "udp"
+  
+  [services.ports]
+    port = 10007
+
+[[services]]
+  internal_port = 10008
+  processes = ["app"]
+  protocol = "udp"
+  
+  [services.ports]
+    port = 10008
+
+[[services]]
+  internal_port = 10009
+  processes = ["app"]
+  protocol = "udp"
+  
+  [services.ports]
+    port = 10009
+
+# VM resources
+[vm]
+  memory = "1gb"
+  cpus = 1
+
+# Metrics
+[metrics]
+  port = 9090
+
+# Environment secrets and variables (set via: fly secrets set VAR=value)
+# These need to be set separately using:
+# fly secrets set DATABASE_URL="your_db_url"
+# fly secrets set REDIS_URL="your_redis_url"
+# fly secrets set JWT_SECRET="your_secret"
+# etc.

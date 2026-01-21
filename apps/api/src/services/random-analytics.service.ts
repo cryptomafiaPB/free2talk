@@ -1,15 +1,8 @@
-/**
- * Random Call Analytics Service
- * 
- * Handles persistence of call sessions to database for analytics and history.
- * Uses batched writes to minimize database load.
- */
-
 import { db } from '../db/index.js';
 import { randomCallSessions, callRatings, userCallPreferences } from '../db/schema.js';
 import { eq, and, or, desc, sql } from 'drizzle-orm';
 
-// ==================== Types ====================
+// ------------------ Types 
 
 interface CallSessionRecord {
     user1Id: string;
@@ -32,15 +25,14 @@ interface CallRatingRecord {
     reportReason?: string;
 }
 
-// ==================== Batch Queue ====================
+// ------------------ Batch Queue 
 
 const sessionBatch: CallSessionRecord[] = [];
 const ratingBatch: CallRatingRecord[] = [];
 let flushInterval: NodeJS.Timeout | null = null;
 
-/**
- * Start the batch flush interval
- */
+
+// Start the batch flush interval
 export function startBatchFlush(intervalMs: number = 30000) {
     if (flushInterval) {
         clearInterval(flushInterval);
@@ -54,9 +46,8 @@ export function startBatchFlush(intervalMs: number = 30000) {
     console.log('[Analytics] Batch flush started');
 }
 
-/**
- * Stop the batch flush interval
- */
+
+// Stop the batch flush interval
 export function stopBatchFlush() {
     if (flushInterval) {
         clearInterval(flushInterval);
@@ -65,19 +56,15 @@ export function stopBatchFlush() {
     console.log('[Analytics] Batch flush stopped');
 }
 
-// ==================== Session Recording ====================
+// ------------------ Session Recording 
 
-/**
- * Queue a call session for persistence
- */
+// Queue a call session for persistence
 export function queueSessionRecord(record: CallSessionRecord): void {
     sessionBatch.push(record);
     console.log(`[Analytics] Session queued for recording (batch size: ${sessionBatch.length})`);
 }
 
-/**
- * Flush queued sessions to database
- */
+// Flush queued sessions to database
 async function flushSessions(): Promise<void> {
     if (sessionBatch.length === 0) return;
 
@@ -105,19 +92,14 @@ async function flushSessions(): Promise<void> {
         sessionBatch.push(...toFlush);
     }
 }
+// ------------------ Rating Recording 
 
-// ==================== Rating Recording ====================
-
-/**
- * Queue a rating for persistence
- */
+// Queue a rating for persistence
 export function queueRatingRecord(record: CallRatingRecord): void {
     ratingBatch.push(record);
 }
 
-/**
- * Flush queued ratings to database
- */
+// Flush queued ratings to database
 async function flushRatings(): Promise<void> {
     if (ratingBatch.length === 0) return;
 
@@ -143,11 +125,9 @@ async function flushRatings(): Promise<void> {
     }
 }
 
-// ==================== User Preferences ====================
+// ------------------ User Preferences 
 
-/**
- * Get user call preferences
- */
+// Get user call preferences
 export async function getUserPreferences(userId: string) {
     const [prefs] = await db
         .select()
@@ -158,9 +138,7 @@ export async function getUserPreferences(userId: string) {
     return prefs;
 }
 
-/**
- * Update user call preferences
- */
+// Update user call preferences
 export async function updateUserPreferences(
     userId: string,
     updates: {
@@ -189,9 +167,8 @@ export async function updateUserPreferences(
     }
 }
 
-/**
- * Increment user call stats
- */
+
+// Increment user call stats
 export async function incrementUserCallStats(
     userId: string,
     callMinutes: number
@@ -216,11 +193,9 @@ export async function incrementUserCallStats(
     }
 }
 
-// ==================== Analytics Queries ====================
+// --------------------- Analytics Queries 
 
-/**
- * Get user's call history
- */
+// Get user's call history
 export async function getUserCallHistory(
     userId: string,
     limit: number = 20,
@@ -240,9 +215,7 @@ export async function getUserCallHistory(
         .offset(offset);
 }
 
-/**
- * Get call statistics for a user
- */
+// Get call statistics for a user
 export async function getUserCallStats(userId: string) {
     const prefs = await getUserPreferences(userId);
 
@@ -254,9 +227,7 @@ export async function getUserCallStats(userId: string) {
     };
 }
 
-/**
- * Get global call statistics
- */
+// Get global call statistics
 export async function getGlobalCallStats() {
     const result = await db
         .select({

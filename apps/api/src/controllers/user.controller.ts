@@ -1,19 +1,10 @@
-/**
- * User/Profile Controller
- * 
- * Handles user profile operations.
- */
-
 import { Request, Response, NextFunction } from 'express';
 import * as profileService from '../services/profile.service.js';
 import { AppError } from '../utils/app-error.js';
 
-// ==================== Profile Endpoints ====================
 
-/**
- * Get current user's full profile
- * GET /api/v1/users/me
- */
+// Get current user's full profile
+// GET /api/v1/users/me
 export async function getMyProfile(req: Request, res: Response, next: NextFunction) {
     try {
         const userId = req.user!.userId;
@@ -39,10 +30,9 @@ export async function getMyProfile(req: Request, res: Response, next: NextFuncti
     }
 }
 
-/**
- * Update current user's profile
- * PATCH /api/v1/users/me
- */
+
+// Update current user's profile
+// PATCH /api/v1/users/me
 export async function updateMyProfile(req: Request, res: Response, next: NextFunction) {
     try {
         const userId = req.user!.userId;
@@ -69,10 +59,8 @@ export async function updateMyProfile(req: Request, res: Response, next: NextFun
     }
 }
 
-/**
- * Update username
- * PATCH /api/v1/users/me/username
- */
+// Update username
+// PATCH /api/v1/users/me/username
 export async function updateUsername(req: Request, res: Response, next: NextFunction) {
     try {
         const userId = req.user!.userId;
@@ -96,10 +84,9 @@ export async function updateUsername(req: Request, res: Response, next: NextFunc
     }
 }
 
-/**
- * Check username availability
- * GET /api/v1/users/check-username/:username
- */
+
+// Check username availability
+// GET /api/v1/users/check-username/:username
 export async function checkUsername(req: Request, res: Response, next: NextFunction) {
     try {
         const { username } = req.params;
@@ -116,10 +103,9 @@ export async function checkUsername(req: Request, res: Response, next: NextFunct
     }
 }
 
-/**
- * Get user's activity feed
- * GET /api/v1/users/me/activity
- */
+
+// Get user's activity feed
+// GET /api/v1/users/me/activity
 export async function getMyActivity(req: Request, res: Response, next: NextFunction) {
     try {
         const userId = req.user!.userId;
@@ -136,10 +122,9 @@ export async function getMyActivity(req: Request, res: Response, next: NextFunct
     }
 }
 
-/**
- * Get user's created rooms
- * GET /api/v1/users/me/rooms
- */
+
+// Get user's created rooms
+// GET /api/v1/users/me/rooms
 export async function getMyRooms(req: Request, res: Response, next: NextFunction) {
     try {
         const userId = req.user!.userId;
@@ -156,10 +141,8 @@ export async function getMyRooms(req: Request, res: Response, next: NextFunction
     }
 }
 
-/**
- * Get user's statistics
- * GET /api/v1/users/me/stats
- */
+// Get user's statistics
+// GET /api/v1/users/me/stats 
 export async function getMyStats(req: Request, res: Response, next: NextFunction) {
     try {
         const userId = req.user!.userId;
@@ -174,12 +157,11 @@ export async function getMyStats(req: Request, res: Response, next: NextFunction
     }
 }
 
-// ==================== Public Profile Endpoints ====================
+// --------------- Public Profile Endpoints
 
-/**
- * Get public profile by ID
- * GET /api/v1/users/:id
- */
+
+// Get public profile by ID
+// GET /api/v1/users/:id
 export async function getUserProfile(req: Request, res: Response, next: NextFunction) {
     try {
         const { id } = req.params;
@@ -199,10 +181,9 @@ export async function getUserProfile(req: Request, res: Response, next: NextFunc
     }
 }
 
-/**
- * Get public profile by username
- * GET /api/v1/users/username/:username
- */
+
+// Get public profile by username
+// GET /api/v1/users/username/:username
 export async function getUserByUsername(req: Request, res: Response, next: NextFunction) {
     try {
         const { username } = req.params;
@@ -213,7 +194,7 @@ export async function getUserByUsername(req: Request, res: Response, next: NextF
             return next(new AppError('User not found', 404));
         }
 
-        // Also get stats for public profile
+        // get stats for public profile
         const stats = await profileService.getUserStats(profile.id);
 
         res.json({

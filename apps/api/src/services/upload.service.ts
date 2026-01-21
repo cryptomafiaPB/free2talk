@@ -1,9 +1,3 @@
-/**
- * Upload Service
- * 
- * Handles file uploads for avatars and other media using Cloudinary.
- */
-
 import { v2 as cloudinary } from 'cloudinary';
 import { config } from '../config/env.js';
 import crypto from 'crypto';
@@ -15,7 +9,7 @@ cloudinary.config({
     api_secret: config.cloudinary.apiSecret,
 });
 
-// ==================== Types ====================
+// ----------------------- Types
 
 export interface UploadResult {
     publicId: string;
@@ -32,25 +26,21 @@ export interface UploadOptions {
     resourceType?: 'image' | 'video' | 'raw' | 'auto';
 }
 
-// ==================== Constants ====================
+// --------------------- Constants 
 
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024; // 5MB
 const ALLOWED_AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 
-// ==================== Helper Functions ====================
+// ----------------------- Helper Functions 
 
-/**
- * Generate unique public ID
- */
+// Generate unique public ID
 function generatePublicId(userId: string, type: string): string {
     const hash = crypto.randomBytes(8).toString('hex');
     const timestamp = Date.now();
     return `${type}/${userId}/${timestamp}-${hash}`;
 }
 
-/**
- * Validate file buffer
- */
+// Validate file buffer
 function validateFile(buffer: Buffer, mimeType: string): void {
     if (buffer.length > MAX_AVATAR_SIZE) {
         throw new Error(`File too large. Maximum size is ${MAX_AVATAR_SIZE / 1024 / 1024}MB`);
@@ -61,11 +51,9 @@ function validateFile(buffer: Buffer, mimeType: string): void {
     }
 }
 
-// ==================== Public Functions ====================
+// ----------------------- Public Functions 
 
-/**
- * Upload avatar image to Cloudinary
- */
+// Upload avatar image to Cloudinary
 export async function uploadAvatar(
     buffer: Buffer,
     mimeType: string,
@@ -117,9 +105,8 @@ export async function uploadAvatar(
     });
 }
 
-/**
- * Delete avatar from Cloudinary
- */
+
+// Delete avatar from Cloudinary
 export async function deleteAvatar(publicId: string): Promise<void> {
     try {
         await cloudinary.uploader.destroy(publicId, {
@@ -131,9 +118,8 @@ export async function deleteAvatar(publicId: string): Promise<void> {
     }
 }
 
-/**
- * Extract public ID from Cloudinary URL
- */
+
+// Extract public ID from Cloudinary URL
 export function extractPublicId(url: string): string | null {
     try {
         // Cloudinary URL format: https://res.cloudinary.com/{cloud_name}/{resource_type}/upload/{transformations}/{public_id}.{format}

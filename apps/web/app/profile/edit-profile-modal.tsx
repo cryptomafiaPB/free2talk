@@ -21,12 +21,11 @@ import {
     Badge,
 } from '@/components/ui';
 import { X, Plus, Loader2, Check, AlertCircle } from 'lucide-react';
-import { cn } from '@/lib/design-system';
 import { useAuthStore } from '@/lib/stores';
 import { profileService } from '@/lib/services/profile.service';
 import { AvatarUpload } from './avatar-upload';
 
-// ==================== Constants ====================
+// ----------------------- Constants 
 
 const AVAILABLE_LANGUAGES = [
     'English', 'Spanish', 'French', 'German', 'Italian', 'Portuguese',
@@ -74,7 +73,7 @@ function getLanguageFlag(language: string): string {
     return LANGUAGE_FLAGS[key] || '🌐';
 }
 
-// ==================== Types ====================
+// -------------------- Types 
 
 interface EditProfileModalProps {
     isOpen: boolean;
@@ -89,7 +88,7 @@ interface FormData {
     learningLanguages: string[];
 }
 
-// ==================== Main Component ====================
+// ------------------- Main Component 
 
 export function EditProfileModal({ isOpen, onClose, onSuccess }: EditProfileModalProps) {
     const { user, updateUser } = useAuthStore();
@@ -348,7 +347,7 @@ export function EditProfileModal({ isOpen, onClose, onSuccess }: EditProfileModa
     );
 }
 
-// ==================== Language Picker ====================
+// ------------------------ Language Picker 
 
 interface LanguagePickerProps {
     selected: string[];

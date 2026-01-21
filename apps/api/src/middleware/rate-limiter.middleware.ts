@@ -14,13 +14,12 @@ const createRedisStore = (prefix: string) => {
     });
 };
 
-/**
- * Rate limiter for authentication endpoints (register, login)
- * Limit: 5 requests per 15 minutes per IP
- */
+
+// Rate limiter for authentication endpoints (register, login)
+// Limit: 10 requests per 15 minutes per IP
 export const authRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 5, // 5 requests per window
+    max: 10, // 10 requests per window
     message: {
         success: false,
         message: 'Too many authentication attempts, please try again after 15 minutes'
@@ -31,13 +30,12 @@ export const authRateLimiter = rateLimit({
     skip: (req, res) => res.statusCode < 400,
 });
 
-/**
- * Rate limiter for room creation
- * Limit: 10 rooms per hour per user
- */
+
+// Rate limiter for room creation
+// Limit: 15 rooms per hour per user
 export const roomCreationRateLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
-    max: 10, // 10 rooms per hour
+    max: 15, // 15 rooms per hour
     message: {
         success: false,
         message: 'Too many rooms created, please try again later'
@@ -51,13 +49,12 @@ export const roomCreationRateLimiter = rateLimit({
     },
 });
 
-/**
- * General API rate limiter
- * Limit: 100 requests per 15 minutes per IP
- */
+
+//  General API rate limiter
+// Limit: 150 requests per 15 minutes per IP
 export const apiRateLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 100, // 100 requests per window
+    max: 150, // 150 requests per window
     message: {
         success: false,
         message: 'Too many requests, please try again later'
@@ -71,10 +68,9 @@ export const apiRateLimiter = rateLimit({
     },
 });
 
-/**
- * Strict rate limiter for sensitive operations (password reset, email verification)
- * Limit: 3 requests per hour per IP
- */
+
+// Strict rate limiter for sensitive operations (password reset, email verification)
+// Limit: 3 requests per hour per IP
 export const strictRateLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hour
     max: 3, // 3 requests per hour

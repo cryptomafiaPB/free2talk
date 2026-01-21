@@ -10,7 +10,6 @@ export const redis = createClient({
                 console.error('Redis reconnection failed after 10 attempts');
                 return new Error('Redis reconnection failed');
             }
-            // Exponential backoff: 50ms, 100ms, 200ms, etc.
             return Math.min(retries * 50, 3000);
         },
     },
@@ -22,7 +21,7 @@ redis.on('error', (err) => {
 });
 
 redis.on('connect', () => {
-    console.log('✓ Redis connected');
+    console.log('Redis connected');
 });
 
 redis.on('reconnecting', () => {
@@ -30,7 +29,7 @@ redis.on('reconnecting', () => {
 });
 
 redis.on('ready', () => {
-    console.log('✓ Redis ready');
+    console.log('Redis ready');
 });
 
 // Connect to Redis
@@ -38,22 +37,22 @@ export async function connectRedis() {
     try {
         // Prevent double connection
         if (redis.isOpen) {
-            console.log('✓ Redis already connected');
+            console.log('Redis already connected');
             return;
         }
         await redis.connect();
-        console.log('✓ Redis connection established');
+        console.log('Redis connection established');
     } catch (error) {
         console.error('Failed to connect to Redis:', error);
         throw error;
     }
 }
 
-// Graceful shutdown
+// shutdown
 export async function disconnectRedis() {
     try {
         await redis.quit();
-        console.log('✓ Redis connection closed');
+        console.log('Redis connection closed');
     } catch (error) {
         console.error('Error closing Redis connection:', error);
     }
@@ -66,18 +65,24 @@ export function isRedisConnected(): boolean {
 
 // Cache key prefixes for organization
 export const CACHE_KEYS = {
+
     ROOM: (roomId: string) => `room:${roomId}`,
     ROOMS_LIST: (page: number, limit: number, language?: string) =>
         `rooms:list:${page}:${limit}${language ? `:${language}` : ''}`,
+
     USER: (userId: string) => `user:${userId}`,
     USER_PROFILE: (userId: string) => `user:profile:${userId}`,
     USER_ROOM: (userId: string) => `user:room:${userId}`,
+
     ROOM_PARTICIPANTS: (roomId: string) => `room:participants:${roomId}`,
+
     ACTIVE_ROOMS: 'rooms:active',
     ONLINE_USERS: 'users:online',
+
     USER_SESSION: (userId: string) => `session:${userId}`,
     REFRESH_TOKEN: (token: string) => `refresh:${token}`,
     USER_REFRESH_TOKEN: (userId: string) => `user:refresh:${userId}`, // Maps userId to current refresh token
+
     // Random Call Keys
     RANDOM_QUEUE_GLOBAL: 'random:queue:global',
     RANDOM_QUEUE_LANGUAGE: (lang: string) => `random:queue:lang:${lang.toLowerCase()}`,

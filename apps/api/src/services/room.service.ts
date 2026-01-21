@@ -20,9 +20,7 @@ function generateSlug(name: string): string {
     return `${baseSlug}-${uniqueSuffix}`;
 }
 
-/**
- * List all active rooms with participant counts
- */
+// List all active rooms with participant counts
 export async function listActiveRooms(
     page = 1,
     limit = 20,
@@ -128,9 +126,7 @@ export async function listActiveRooms(
     return response;
 }
 
-/**
- * Get room by ID or slug with full details
- */
+// Get room by ID or slug with full details
 export async function getRoomById(roomIdOrSlug: string): Promise<RoomWithParticipants> {
     // Check cache first
     const cached = await RoomCache.getRoom(roomIdOrSlug);
@@ -208,9 +204,7 @@ export async function getRoomById(roomIdOrSlug: string): Promise<RoomWithPartici
     return result;
 }
 
-/**
- * Get all participants in a room
- */
+// Get all participants in a room
 export async function getRoomParticipants(roomId: string): Promise<ParticipantInfo[]> {
     // NOTE: Participant caching disabled to prevent race conditions
     // The cache invalidation timing was causing stale reads when multiple users join quickly.
@@ -240,9 +234,8 @@ export async function getRoomParticipants(roomId: string): Promise<ParticipantIn
     return participants;
 }
 
-/**
- * Create a new room
- */
+
+// Create a new room
 export async function createRoom(
     userId: string,
     input: CreateRoomInput
@@ -317,9 +310,7 @@ export async function createRoom(
     };
 }
 
-/**
- * Join a room
- */
+// Join a room
 export async function joinRoom(roomId: string, userId: string): Promise<{ room: RoomWithParticipants; participant: ParticipantInfo }> {
     // Get room details
     const room = await getRoomById(roomId);
@@ -396,9 +387,7 @@ export async function joinRoom(roomId: string, userId: string): Promise<{ room: 
     };
 }
 
-/**
- * Leave a room
- */
+// Leave a room
 export async function leaveRoom(roomId: string, userId: string): Promise<{ roomClosed: boolean }> {
     // Find the participant record
     const participant = await db.query.roomParticipants.findFirst({
@@ -484,9 +473,7 @@ export async function leaveRoom(roomId: string, userId: string): Promise<{ roomC
     return { roomClosed };
 }
 
-/**
- * Close a room (owner only)
- */
+// Close a room (owner only)
 export async function closeRoom(roomId: string, userId: string): Promise<void> {
     // Get room
     const room = await db.query.rooms.findFirst({
@@ -528,9 +515,7 @@ export async function closeRoom(roomId: string, userId: string): Promise<void> {
     await RoomCache.invalidateRoomsList();
 }
 
-/**
- * Kick a user from a room (owner only)
- */
+// Kick a user from a room (owner only)
 export async function kickUser(roomId: string, ownerId: string, targetUserId: string): Promise<void> {
     // Get room
     const room = await db.query.rooms.findFirst({
@@ -573,10 +558,8 @@ export async function kickUser(roomId: string, ownerId: string, targetUserId: st
     await UserCache.cacheUserRoom(targetUserId, null);
 }
 
-/**
- * Transfer room ownership
- * IMPORTANT: Room stays active, old owner remains as participant
- */
+// Transfer room ownership
+// IMPORTANT: Room stays active, old owner remains as participant
 export async function transferOwnership(
     roomId: string,
     currentOwnerId: string,
@@ -673,9 +656,7 @@ export async function transferOwnership(
     };
 }
 
-/**
- * Update room details (owner only)
- */
+// Update room details (owner only)
 export async function updateRoom(
     roomId: string,
     userId: string,
@@ -731,9 +712,7 @@ export async function updateRoom(
     return getRoomById(roomId);
 }
 
-/**
- * Get rooms owned by a user
- */
+// Get rooms owned by a user
 export async function getUserRooms(userId: string): Promise<RoomWithParticipants[]> {
     const userRooms = await db
         .select({
@@ -798,9 +777,7 @@ export async function getUserRooms(userId: string): Promise<RoomWithParticipants
     }));
 }
 
-/**
- * Get current room for a user (if they're in one)
- */
+// Get current room for a user (if they're in one)
 export async function getUserCurrentRoom(userId: string): Promise<RoomWithParticipants | null> {
     const participation = await db.query.roomParticipants.findFirst({
         where: and(
@@ -816,10 +793,8 @@ export async function getUserCurrentRoom(userId: string): Promise<RoomWithPartic
     return getRoomById(participation.roomId);
 }
 
-/**
- * Cleanup stale rooms - close any active rooms with no participants
- * Should be called on server startup
- */
+// Cleanup stale rooms - close any active rooms with no participants
+// Should be called on server startup
 export async function cleanupStaleRooms(): Promise<number> {
     // Find all active rooms
     const activeRooms = await db.query.rooms.findMany({

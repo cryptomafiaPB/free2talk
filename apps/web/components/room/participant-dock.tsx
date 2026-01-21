@@ -2,7 +2,6 @@
  * Participant Dock Component
  * 
  * Displays participants in a horizontal dock at the bottom of the room.
- * Inspired by free4talk.com UI - compact profile tiles with role badges.
  */
 
 'use client';

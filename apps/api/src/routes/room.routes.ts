@@ -18,7 +18,7 @@ import {
 
 export const roomRouter = Router();
 
-// ==================== User-specific Routes (must come before :id routes) ====================
+// ------------------- User-specific Routes
 
 // GET /rooms/user/owned - Get rooms owned by the current user
 roomRouter.get('/user/owned', authMiddleware, getUserOwnedRooms);
@@ -26,7 +26,7 @@ roomRouter.get('/user/owned', authMiddleware, getUserOwnedRooms);
 // GET /rooms/user/current - Get current room the user is in
 roomRouter.get('/user/current', authMiddleware, getUserCurrentRoom);
 
-// ==================== Public Routes ====================
+// -------------------- Public Routes 
 
 // GET /rooms - List all active rooms (public, with pagination)
 roomRouter.get('/', listRooms);
@@ -37,7 +37,7 @@ roomRouter.get('/:id', getRoom);
 // GET /rooms/:id/participants - Get all participants in a room (public)
 roomRouter.get('/:id/participants', getRoomParticipants);
 
-// ==================== Protected Routes ====================
+// ---------------------- Protected Routes 
 
 // POST /rooms - Create a new room (requires auth)
 roomRouter.post('/', authMiddleware, roomCreationRateLimiter, createRoom);

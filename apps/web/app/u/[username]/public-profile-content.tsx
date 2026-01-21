@@ -29,7 +29,7 @@ import { cn } from '@/lib/design-system';
 import { profileService, type ProfileWithStats } from '@/lib/services/profile.service';
 import { useAuthStore } from '@/lib/stores';
 
-// ==================== Constants ====================
+// ------------------- Constants 
 
 const LANGUAGE_FLAGS: Record<string, string> = {
     english: '🇺🇸',

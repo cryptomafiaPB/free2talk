@@ -2,7 +2,6 @@
  * Room Control Bar Component
  * 
  * Top-centered control bar for voice rooms.
- * Inspired by free4talk.com UI - floating control bar with mic, screen share, signal, and leave buttons.
  */
 
 'use client';

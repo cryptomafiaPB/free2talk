@@ -8,12 +8,12 @@ import { SessionCache, UserCache } from './cache.service.js';
 import { CACHE_TTL } from '../db/redis.js';
 import { config } from '../config/env.js';
 
-// Initialize Google OAuth client
+// Google OAuth client
 const googleClient = new OAuth2Client(config.google.clientId);
 
-/**
- * Google user info structure from userinfo endpoint
- */
+
+// Google user info structure from userinfo endpoint
+
 interface GoogleUserInfo {
     sub: string;
     email: string;
@@ -25,9 +25,8 @@ interface GoogleUserInfo {
     locale?: string;
 }
 
-/**
- * Verify Google ID token and extract payload
- */
+// Verify Google ID token and extract payload
+
 export async function verifyGoogleToken(idToken: string): Promise<GoogleTokenPayload> {
     try {
         const ticket = await googleClient.verifyIdToken({
@@ -47,9 +46,8 @@ export async function verifyGoogleToken(idToken: string): Promise<GoogleTokenPay
     }
 }
 
-/**
- * Verify Google access token by fetching user info
- */
+
+// Verify Google access token by fetching user info
 export async function verifyGoogleAccessToken(accessToken: string): Promise<GoogleUserInfo> {
     try {
         const response = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
@@ -76,10 +74,9 @@ export async function verifyGoogleAccessToken(accessToken: string): Promise<Goog
     }
 }
 
-/**
- * Generate a unique username from Google email
- * Handles collisions by appending random numbers
- */
+
+// Generate a unique username from Google email
+// Handles collisions by appending random numbers 
 async function generateUniqueUsername(email: string): Promise<string> {
     const baseUsername = email
         .split('@')[0]
@@ -110,9 +107,7 @@ async function generateUniqueUsername(email: string): Promise<string> {
     return `user_${Date.now()}`;
 }
 
-/**
- * Unified Google payload interface
- */
+// Unified Google payload interface
 interface UnifiedGooglePayload {
     sub: string;
     email: string;
@@ -122,10 +117,8 @@ interface UnifiedGooglePayload {
     picture?: string;
 }
 
-/**
- * Handle Google OAuth sign-in/sign-up
- * Supports both ID token and access token flows
- */
+// Handle Google OAuth sign-in/sign-up
+// Supports both ID token and access token flows 
 export async function googleAuthService(idToken?: string, accessToken?: string) {
     let googlePayload: UnifiedGooglePayload;
 
@@ -267,9 +260,8 @@ export async function googleAuthService(idToken?: string, accessToken?: string) 
     };
 }
 
-/**
- * Check if a user can set a password (OAuth-only users)
- */
+
+// Check if a user can set a password (OAuth-only users)
 export async function canSetPassword(userId: string): Promise<boolean> {
     const user = await db.query.users.findFirst({
         where: eq(users.id, userId)
@@ -283,9 +275,8 @@ export async function canSetPassword(userId: string): Promise<boolean> {
     return !user.passwordHash;
 }
 
-/**
- * Link email/password to existing OAuth account
- */
+
+// Link email/password to existing OAuth account 
 export async function linkEmailPassword(userId: string, passwordHash: string) {
     const user = await db.query.users.findFirst({
         where: eq(users.id, userId)

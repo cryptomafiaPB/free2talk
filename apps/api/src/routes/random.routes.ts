@@ -1,9 +1,3 @@
-/**
- * Random Call Routes
- * 
- * REST API routes for random call feature.
- */
-
 import { Router } from 'express';
 import * as randomController from '../controllers/random.controller.js';
 import { authMiddleware } from '../middleware/auth.middleware.js';

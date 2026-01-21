@@ -15,7 +15,7 @@ const ABANDONED_ROOM_GRACE_MINUTES = 2; // Rooms older than 2 minutes with no co
 
 const httpServer = createServer(app);
 
-// Initialize Socket.io
+
 const io = new Server(httpServer, {
     cors: {
         origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
@@ -27,23 +27,23 @@ const io = new Server(httpServer, {
 
 let abandonedRoomCleanupInterval: NodeJS.Timeout | null = null;
 
-// Initialize mediasoup workers
+// init mediasoup workers
 async function start() {
     try {
-        // Connect to Redis
+        // Connect Redis
         await connectRedis();
-        console.log('✓ Redis initialized');
+        console.log('Redis connected');
 
         // Cleanup any stale rooms from previous sessions
         const cleanedRooms = await cleanupStaleRooms();
         if (cleanedRooms > 0) {
-            console.log(`✓ Cleaned up ${cleanedRooms} stale room(s)`);
+            console.log(`Cleaned up ${cleanedRooms} stale room(s)`);
         }
 
         await initMediasoupWorkers();
-        console.log('✓ mediasoup workers initialized');
+        console.log('Mediasoup workers initialized');
 
-        // Set socket instance for global access
+        // Set socket instance for global
         setSocketInstance(io);
 
         // Initialize socket handlers

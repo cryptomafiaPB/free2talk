@@ -29,10 +29,9 @@ const consumeSchema = z.object({
     rtpCapabilities: z.any(),
 });
 
-/**
- * GET /voice/rtp-capabilities/:roomId
- * Get RTP capabilities for a room's router
- */
+
+// GET /voice/rtp-capabilities/:roomId
+// Get RTP capabilities for a room's router
 export async function getRtpCapabilities(req: Request, res: Response, next: NextFunction) {
     try {
         const { roomId } = req.params;
@@ -52,10 +51,9 @@ export async function getRtpCapabilities(req: Request, res: Response, next: Next
     }
 }
 
-/**
- * POST /voice/transport
- * Create a WebRTC transport for sending or receiving media
- */
+
+// POST /voice/transport
+// Create a WebRTC transport for sending or receiving media
 export async function createTransport(req: Request, res: Response, next: NextFunction) {
     try {
         const userId = req.user?.userId;
@@ -81,10 +79,9 @@ export async function createTransport(req: Request, res: Response, next: NextFun
     }
 }
 
-/**
- * POST /voice/connect-transport
- * Connect a transport with DTLS parameters
- */
+
+// POST /voice/connect-transport
+// Connect a transport with DTLS parameters
 export async function connectTransport(req: Request, res: Response, next: NextFunction) {
     try {
         const userId = req.user?.userId;
@@ -111,10 +108,9 @@ export async function connectTransport(req: Request, res: Response, next: NextFu
     }
 }
 
-/**
- * POST /voice/produce
- * Start producing media (audio)
- */
+
+// POST /voice/produce
+// Start producing media (audio)
 export async function produce(req: Request, res: Response, next: NextFunction) {
     try {
         const userId = req.user?.userId;
@@ -142,10 +138,9 @@ export async function produce(req: Request, res: Response, next: NextFunction) {
     }
 }
 
-/**
- * POST /voice/consume
- * Start consuming media from another producer
- */
+
+// POST /voice/consume
+// Start consuming media from another producer
 export async function consume(req: Request, res: Response, next: NextFunction) {
     try {
         const userId = req.user?.userId;
@@ -176,10 +171,9 @@ export async function consume(req: Request, res: Response, next: NextFunction) {
     }
 }
 
-/**
- * POST /voice/pause-producer
- * Pause/resume a producer (mute/unmute)
- */
+
+//POST /voice/pause-producer
+// Pause/resume a producer (mute/unmute)
 export async function pauseProducer(req: Request, res: Response, next: NextFunction) {
     try {
         const userId = req.user?.userId;
@@ -205,10 +199,8 @@ export async function pauseProducer(req: Request, res: Response, next: NextFunct
     }
 }
 
-/**
- * GET /voice/producers/:roomId
- * Get all active producers in a room (for a joining user to consume)
- */
+// GET /voice/producers/:roomId
+// Get all active producers in a room (for a joining user to consume)
 export async function getProducers(req: Request, res: Response, next: NextFunction) {
     try {
         const userId = req.user?.userId;

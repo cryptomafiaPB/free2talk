@@ -5,12 +5,12 @@
  * for instant matching and direct peer-to-peer connections.
  */
 
-// ==================== Core Types ====================
+// ---------------------- Core Types 
 
 export interface RandomCallPreferences {
-    /** Selected languages for preference matching (optional) */
+    // Selected languages for preference matching (optional)
     languages?: string[];
-    /** Whether language preference is enabled */
+    // Whether language preference is enabled
     preferenceEnabled: boolean;
 }
 
@@ -25,20 +25,20 @@ export interface RandomCallSession {
     sessionId: string;
     partnerId: string;
     partnerInfo: RandomCallPartner;
-    /** Whether this client should initiate the WebRTC offer */
+    // Whether this client should initiate the WebRTC offer
     isInitiator: boolean;
-    /** Language matched (null = random global match) */
+    // Language matched (null = random global match)
     matchedLanguage?: string | null;
 }
 
 export interface RandomCallStats {
-    /** Total users currently in the random call feature */
+    // Total users currently in the random call feature
     totalActive: number;
-    /** Users waiting in queue for a match */
+    // Users waiting in queue for a match
     inQueue: number;
-    /** Number of active ongoing calls */
+    // Number of active ongoing calls
     activeCalls: number;
-    /** Timestamp of last update */
+    // Timestamp of last update
     lastUpdate: number;
 }
 
@@ -54,7 +54,7 @@ export interface RandomCallEndReason {
     message?: string;
 }
 
-// ==================== WebRTC Signaling Types ====================
+// ---------------------- WebRTC Signaling Types 
 
 export interface RTCIceCandidateInit {
     candidate: string;
@@ -70,14 +70,14 @@ export interface RTCSessionDescriptionInit {
 
 export type RTCSdpType = 'answer' | 'offer' | 'pranswer' | 'rollback';
 
-// ==================== Callback Response Types ====================
+// ---------------------- Callback Response Types 
 
 export interface RandomQueueResponse {
     success: boolean;
     error?: string;
-    /** Current position info */
+    // Current position info
     position?: number;
-    /** Current stats */
+    // Current stats
     stats?: RandomCallStats;
 }
 
@@ -86,129 +86,129 @@ export interface RandomEndCallResponse {
     error?: string;
 }
 
-// ==================== Socket Event Payloads ====================
+// ---------------------- Socket Event Payloads 
 
-/** Payload for random:start_queue event */
+// Payload for random:start_queue event
 export interface RandomStartQueuePayload {
-    /** Optional language preferences */
+    // Optional language preferences
     preferences?: RandomCallPreferences;
 }
 
-/** Payload for random:match_instant event */
+// Payload for random:match_instant event
 export interface RandomMatchInstantPayload extends RandomCallSession { }
 
-/** Payload for random:ice_candidate event (both directions) */
+// Payload for random:ice_candidate event (both directions)
 export interface RandomIceCandidatePayload {
     sessionId: string;
     candidate: RTCIceCandidateInit;
 }
 
-/** Payload for random:offer event (both directions) */
+// Payload for random:offer event (both directions)
 export interface RandomOfferPayload {
     sessionId: string;
     offer: RTCSessionDescriptionInit;
 }
 
-/** Payload for random:answer event (both directions) */
+// Payload for random:answer event (both directions)
 export interface RandomAnswerPayload {
     sessionId: string;
     answer: RTCSessionDescriptionInit;
 }
 
-/** Payload for random:end_call event */
+/// Payload for random:end_call event
 export interface RandomEndCallPayload {
     sessionId: string;
     rating?: 1 | 2 | 3 | 4 | 5;
 }
 
-/** Payload for random:next_partner event */
+// Payload for random:next_partner event
 export interface RandomNextPartnerPayload {
     sessionId: string;
 }
 
-/** Payload for random:report_user event */
+// Payload for random:report_user event
 export interface RandomReportUserPayload {
     sessionId: string;
     reason: string;
     details?: string;
 }
 
-// ==================== Client → Server Events ====================
+// --------------------- Client -> Server Events 
 
 export interface RandomClientToServerEvents {
-    /** Join the random matching queue */
+    // Join the random matching queue
     'random:start_queue': (
         payload: RandomStartQueuePayload,
         callback?: (response: RandomQueueResponse) => void
     ) => void;
 
-    /** Leave the random matching queue */
+    // Leave the random matching queue
     'random:cancel_queue': (callback?: (response: { success: boolean }) => void) => void;
 
-    /** Send ICE candidate to peer (via signaling server) */
+    // Send ICE candidate to peer (via signaling server)
     'random:ice_candidate': (payload: RandomIceCandidatePayload) => void;
 
-    /** Send WebRTC offer to peer */
+    // Send WebRTC offer to peer
     'random:offer': (payload: RandomOfferPayload) => void;
 
-    /** Send WebRTC answer to peer */
+    // Send WebRTC answer to peer
     'random:answer': (payload: RandomAnswerPayload) => void;
 
-    /** Skip current partner and find next */
+    // Skip current partner and find next
     'random:next_partner': (
         payload: RandomNextPartnerPayload,
         callback?: (response: RandomQueueResponse) => void
     ) => void;
 
-    /** End the current call */
+    // End the current call
     'random:end_call': (
         payload: RandomEndCallPayload,
         callback?: (response: RandomEndCallResponse) => void
     ) => void;
 
-    /** Report a user for inappropriate behavior */
+    // Report a user for inappropriate behavior
     'random:report_user': (
         payload: RandomReportUserPayload,
         callback?: (response: { success: boolean }) => void
     ) => void;
 
-    /** Subscribe to stats updates */
+    // Subscribe to stats updates
     'random:subscribe_stats': () => void;
 
-    /** Unsubscribe from stats updates */
+    // Unsubscribe from stats updates
     'random:unsubscribe_stats': () => void;
 }
 
-// ==================== Server → Client Events ====================
+// --------------------- Server -> Client Events 
 
 export interface RandomServerToClientEvents {
-    /** Match found - immediately start P2P connection */
+    // Match found - immediately start P2P connection
     'random:match_instant': (payload: RandomMatchInstantPayload) => void;
 
-    /** Forward ICE candidate from peer */
+    // Forward ICE candidate from peer
     'random:ice_candidate': (payload: { candidate: RTCIceCandidateInit }) => void;
 
-    /** Forward WebRTC offer from peer */
+    // Forward WebRTC offer from peer
     'random:offer': (payload: { offer: RTCSessionDescriptionInit }) => void;
 
-    /** Forward WebRTC answer from peer */
+    // Forward WebRTC answer from peer
     'random:answer': (payload: { answer: RTCSessionDescriptionInit }) => void;
 
-    /** Partner disconnected */
+    // Partner disconnected
     'random:partner_disconnected': () => void;
 
-    /** Call ended */
+    // Call ended
     'random:call_ended': (payload: RandomCallEndReason) => void;
 
-    /** Connection timeout - failed to establish P2P */
+    // Connection timeout - failed to establish P2P
     'random:connection_timeout': () => void;
 
-    /** Realtime stats update */
+    // Realtime stats update
     'random:stats_update': (stats: RandomCallStats) => void;
 
-    /** User was reported and action taken */
+    // User was reported and action taken
     'random:reported': (payload: { reason: string }) => void;
 
-    /** Queue position update */
+    // Queue position update
     'random:queue_position': (position: number) => void;
 }

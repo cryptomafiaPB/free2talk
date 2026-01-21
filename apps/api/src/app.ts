@@ -14,10 +14,11 @@ import { apiRateLimiter } from './middleware/rate-limiter.middleware.js';
 
 export const app = express();
 
-// Trust proxy (important for rate limiting behind reverse proxy like Render)
+// Trust proxy (imp for rate limiting behind reverse proxy like Render)
 app.set('trust proxy', 1);
 
-// Middleware
+// Middlewares
+
 app.use(helmet());
 app.use(
     cors({
@@ -31,7 +32,7 @@ app.use(express.json());
 app.use(cookieParser())
 app.use(morgan('dev'));
 
-// Apply general rate limiting to all API routes
+// general rate limiting to all API routes
 app.use('/api', apiRateLimiter);
 
 // Health check
