@@ -1,5 +1,4 @@
 # Free2Talk
-# Free2Talk
 
 <div align="center">
 
@@ -7,8 +6,12 @@
 [![Node.js](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0+-blue.svg)](https://www.typescriptlang.org/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](./CONTRIBUTING.md)
+[![Join community Telegram](https://img.shields.io/badge/Telegram-Join%20Us-blue.svg)](https://t.me/freetotalk2)
+
 
 A free, open-source, scalable language learning platform for real-time voice practice with native speakers and language partners worldwide.
+
+Join us on Telegram: [Community Channel](https://t.me/freetotalk2) -   [Discussion group](https://t.me/+SXrT3SraB9piMmVl)
 
 [Features](#features) • [Quick Start](#quick-start) • [Tech Stack](#tech-stack) • [Contributing](#contributing) • [Support](#support)
 
@@ -19,6 +22,7 @@ A free, open-source, scalable language learning platform for real-time voice pra
 ## 🌍 About Free2Talk
 
 Free2Talk is an innovative free open-source platform that connects language learners with native speakers and language partners for real-time voice conversations. Whether you want to improve your accent, practice conversational skills, or learn from native speakers, Free2Talk provides a scalable, free environment to achieve your language learning goals.
+
 
 ### Why Free2Talk?
 
@@ -108,7 +112,7 @@ Free2Talk is an innovative free open-source platform that connects language lear
    pnpm dev
    ```
 
-   Your application will be available at:
+   Your local application will be available at:
    - 🖥️ **Frontend**: [http://localhost:3000](http://localhost:3000)
    - ⚙️ **Backend API**: [http://localhost:3001](http://localhost:3001)
 
@@ -165,6 +169,7 @@ free2talk/
 ---
 
 ## 🛠️ Tech Stack
+
 
 ### Frontend
 - **Framework**: [Next.js 14+](https://nextjs.org/) - React with SSR and optimization
@@ -234,7 +239,7 @@ We welcome contributions from developers of all skill levels! Whether you're fix
 
 1. **Read our [CONTRIBUTING.md](./CONTRIBUTING.md)** - Complete guide for contributors
 2. **Review [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)** - Community standards
-3. **Check [open issues](https://github.com/yourusername/free2talk/issues)** - Find areas to help
+3. **Check [open issues](https://github.com/cryptomafiaPB/free2talk/issues)** - Find areas to help
 4. **Look for "good first issue" tags** - Perfect for newcomers
 
 ### Quick Contribution Steps
@@ -272,16 +277,18 @@ git push origin feature/amazing-feature
 
 Have an idea or found a bug? We'd love to hear about it!
 
-- **[Report a Bug](https://github.com/yourusername/free2talk/issues/new?template=bug_report.md)** - Use the bug report template
-- **[Request a Feature](https://github.com/yourusername/free2talk/issues/new?template=feature_request.md)** - Suggest improvements
-- **[Join Discussions](https://github.com/yourusername/free2talk/discussions)** - Ask questions and discuss ideas
+- **[Report a Bug](https://github.com/cryptomafiaPB/free2talk/issues/new?template=bug_report.md)** - Use the bug report template
+- **[Request a Feature](https://github.com/cryptomafiaPB/free2talk/issues/new?template=feature_request.md)** - Suggest improvements
+- **[Join Discussions](https://github.com/cryptomafiaPB/free2talk/discussions)** - Ask questions and discuss ideas
 
 ---
 
 ## 💬 Support & Community
 
-- **[GitHub Issues](https://github.com/yourusername/free2talk/issues)** - Bug reports and feature requests
-- **[GitHub Discussions](https://github.com/yourusername/free2talk/discussions)** - Ask questions and share ideas
+- **[GitHub Issues](https://github.com/cryptomafiaPB/free2talk/issues)** - Bug reports and feature requests
+- **[GitHub Discussions](https://github.com/cryptomafiaPB/free2talk/discussions)** - Ask questions and share ideas
+- **[Telegram Community Channel](https://t.me/freetotalk2)** - Announcements and updates
+- **[Telegram Discussion Group](https://t.me/+SXrT3SraB9piMmVl)** - Chat with other users and contributors
 - **[Contributing Guide](./CONTRIBUTING.md)** - Development documentation
 
 ---
