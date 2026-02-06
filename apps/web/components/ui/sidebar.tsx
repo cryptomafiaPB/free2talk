@@ -49,20 +49,27 @@ const mainNavItems: NavItem[] = [
 // Custom hook for sidebar state persistence
 function useSidebarState() {
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const [isInitialized, setIsInitialized] = useState(false);
 
     useEffect(() => {
         const saved = localStorage.getItem('sidebar-collapsed');
         if (saved !== null) {
             setIsCollapsed(saved === 'true');
         }
+        setIsInitialized(true);
     }, []);
+
+    // Only dispatch events after initial mount
+    useEffect(() => {
+        if (isInitialized) {
+            window.dispatchEvent(new CustomEvent('sidebar-toggle', { detail: { collapsed: isCollapsed } }));
+        }
+    }, [isCollapsed, isInitialized]);
 
     const toggle = () => {
         setIsCollapsed(prev => {
             const newValue = !prev;
             localStorage.setItem('sidebar-collapsed', String(newValue));
-            // Dispatch custom event for layout to listen to
-            window.dispatchEvent(new CustomEvent('sidebar-toggle', { detail: { collapsed: newValue } }));
             return newValue;
         });
     };
@@ -97,7 +104,7 @@ export function Sidebar() {
                         {/* <div className="h-9 w-9 rounded-xl from-primary-500 to-primary-600 flex items-center justify-center shadow-lg shadow-primary-500/30 group-hover:scale-105 transition-transform"> */}
                         <div>
                             <Image
-                                src="/logo.png"
+                                src="/white-logo.png"
                                 alt="Free2Talk Logo"
                                 width={74}
                                 height={74}
@@ -118,7 +125,7 @@ export function Sidebar() {
                         <div>
                             {/* <span className="text-white font-bold text-base">F2T</span> */}
                             <Image
-                                src="/logo.png"
+                                src="/white-logo.png"
                                 alt="Free2Talk Logo"
                                 width={74}
                                 height={74}
