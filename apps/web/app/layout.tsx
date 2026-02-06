@@ -43,14 +43,6 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
-      <head>
-        <link
-          rel="icon"
-          href="/logo-white-circle.png"
-          type="image/png"
-          sizes="32x32"
-        />
-      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
