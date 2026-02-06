@@ -62,7 +62,7 @@ const UnauthenticatedMenu = memo(function UnauthenticatedMenu() {
 /**
  * Dropdown menu for authenticated users
  */
-const AuthenticatedMenu = memo(function AuthenticatedMenu() {
+export const AuthenticatedMenu = memo(function AuthenticatedMenu() {
     const { user, logout, isLoading } = useAuth();
 
     const handleLogout = useCallback(async () => {

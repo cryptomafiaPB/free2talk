@@ -337,14 +337,14 @@ export const IdleState = memo(function IdleState({
                 onClick={onStartQueue}
                 size="lg"
                 className={cn(
-                    'w-full max-w-md h-14 text-lg font-semibold',
+                    'w-full max-w-md h-12 sm:h-14 text-base sm:text-lg font-semibold',
                     'bg-gradient-to-r from-primary-500 to-primary-600',
                     'hover:from-primary-400 hover:to-primary-500',
                     'shadow-lg shadow-primary-500/25',
                     'transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]'
                 )}
             >
-                <PhoneCall className="h-5 w-5 mr-2" />
+                <PhoneCall className="h-4 w-4 sm:h-5 sm:w-5 mr-2" />
                 Start Random Call
             </Button>
         </div>
@@ -379,33 +379,33 @@ export const SearchingState = memo(function SearchingState({
             <div className="relative">
                 {/* Outer pulse rings */}
                 <div className="absolute inset-0 flex items-center justify-center">
-                    <div className="w-32 h-32 rounded-full bg-primary-500/20 animate-ping" />
+                    <div className="w-40 h-40 rounded-full bg-gradient-to-r from-primary-500/20 to-primary-600/10 animate-pulse" />
                 </div>
                 <div className="absolute inset-0 flex items-center justify-center">
                     <div
-                        className="w-24 h-24 rounded-full bg-primary-500/30 animate-ping"
+                        className="w-32 h-32 rounded-full bg-gradient-to-r from-primary-500/30 to-primary-600/20 animate-ping"
                         style={{ animationDelay: '150ms' }}
                     />
                 </div>
 
                 {/* Center icon */}
                 <div className={cn(
-                    'relative z-10 w-24 h-24 rounded-full',
+                    'relative z-10 w-28 h-28 rounded-full',
                     'flex items-center justify-center',
                     'bg-gradient-to-br from-primary-500/40 to-primary-600/20',
-                    'border border-primary-500/50'
+                    'border-2 border-primary-500/50'
                 )}>
-                    <Loader2 className="h-10 w-10 text-primary-400 animate-spin" />
+                    <Loader2 className="h-12 w-12 text-primary-400 animate-spin" />
                 </div>
             </div>
 
             {/* Text */}
             <div className="text-center space-y-2">
-                <h2 className="text-xl font-semibold">
+                <h2 className="text-xl font-semibold bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">
                     Finding a partner{dots}
                 </h2>
-                <p className="text-sm text-muted-foreground">
-                    This usually takes a few seconds
+                <p className="text-sm text-muted-foreground max-w-sm">
+                    Searching for someone to chat with. This usually takes a few seconds.
                 </p>
             </div>
 
@@ -418,11 +418,11 @@ export const SearchingState = memo(function SearchingState({
                 variant="outline"
                 className={cn(
                     glassStyles.button,
-                    'w-full max-w-xs border'
+                    'w-full max-w-xs border h-11'
                 )}
             >
                 <X className="h-4 w-4 mr-2" />
-                Cancel
+                Cancel Search
             </Button>
         </div>
     );
@@ -609,62 +609,101 @@ export const ConnectedState = memo(function ConnectedState({
     }, []);
 
     return (
-        <div className={cn('flex flex-col items-center gap-6', className)}>
+        <div className={cn('flex flex-col items-center gap-4 w-full', className)}>
             {/* Hidden audio element for remote stream */}
             <audio ref={audioRef} autoPlay playsInline />
 
-            {/* Partner info */}
-            <Card className={cn(glassStyles.card, 'w-full max-w-md border')}>
-                <CardContent className="pt-6 flex flex-col items-center gap-4">
-                    {/* Top row: Connection quality + Voice activity */}
-                    <div className="w-full flex items-center justify-between px-2">
+            {/* Partner card with enhanced indicators */}
+            <Card className={cn(glassStyles.card, 'w-full max-w-lg border overflow-hidden')}>
+                {/* Status bar at top */}
+                <div className="flex items-center justify-between px-3 sm:px-4 py-2.5 sm:py-3 bg-white/5 border-b border-white/10 gap-2 flex-wrap sm:flex-nowrap">
+                    <div className="flex items-center gap-1 sm:gap-2 min-w-0">
                         <ConnectionQualityIndicator quality={connectionQuality ?? null} />
-                        <div className="flex items-center gap-2">
-                            <VoiceActivityIndicator isSpeaking={isPartnerSpeaking} label="Partner" />
-                        </div>
+                        {connectionQuality && (
+                            <span className="text-xs text-muted-foreground hidden sm:inline truncate">
+                                {connectionQuality.rtt.toFixed(0)}ms
+                            </span>
+                        )}
                     </div>
+                    <Badge variant="secondary" className={cn(glassStyles.badge, 'border text-green-400 text-xs sm:text-sm whitespace-nowrap')}>
+                        <span className="relative flex h-1.5 w-1.5 sm:h-2 sm:w-2 mr-1.5 sm:mr-2">
+                            <span className="animate-pulse absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                            <span className="relative inline-flex rounded-full h-full w-full bg-green-500" />
+                        </span>
+                        Connected
+                    </Badge>
+                </div>
 
-                    {/* Avatar with audio visualizer and speaking indicator */}
-                    <div className="relative">
-                        <AudioVisualizer stream={remoteStream} />
-                        <Avatar
-                            src={partner?.avatarUrl}
-                            fallback={partner?.username ?? '?'}
-                            size="3xl"
-                            className={cn(
-                                'relative z-10 border-2 transition-all',
-                                isPartnerSpeaking ? 'border-green-500 shadow-lg shadow-green-500/30' : 'border-green-500/50'
-                            )}
-                        />
-                        {/* Speaking ring animation */}
-                        {isPartnerSpeaking && (
-                            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
-                                <div className="w-28 h-28 rounded-full border-2 border-green-500/50 animate-ping" />
+                <CardContent className="pt-4 sm:pt-6 flex flex-col items-center gap-3 sm:gap-4 px-3 sm:px-4 pb-4 sm:pb-6">
+                    {/* Partner info with better layout */}
+                    <div className="w-full space-y-3 sm:space-y-4">
+                        {/* Avatar section */}
+                        <div className="flex flex-col items-center">
+                            <div className="relative mb-2 sm:mb-3">
+                                <AudioVisualizer stream={remoteStream} />
+                                <Avatar
+                                    src={partner?.avatarUrl}
+                                    fallback={partner?.username ?? '?'}
+                                    size="2xl"
+                                    className={cn(
+                                        'relative z-10 border-2 transition-all duration-300',
+                                        isPartnerSpeaking
+                                            ? 'border-green-500 shadow-lg shadow-green-500/40 scale-105'
+                                            : 'border-green-500/50'
+                                    )}
+                                />
+                                {isPartnerSpeaking && (
+                                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+                                        <div className="w-32 h-32 rounded-full border-2 border-green-500/30 animate-ping" />
+                                    </div>
+                                )}
                             </div>
-                        )}
-                    </div>
 
-                    {/* Name and language badge */}
-                    <div className="text-center">
-                        <h2 className="text-xl font-semibold flex items-center justify-center gap-2">
-                            {partner?.displayName ?? partner?.username ?? 'Anonymous'}
-                            {languageInfo && (
-                                <Badge variant="outline" className="text-xs font-normal">
-                                    {languageInfo.flag} {languageInfo.code.toUpperCase()}
-                                </Badge>
-                            )}
-                        </h2>
-                        {languageInfo && (
-                            <p className="text-sm text-muted-foreground mt-1">
-                                Speaking {languageInfo.name}
-                            </p>
-                        )}
-                    </div>
+                            {/* Name and language - with matching info */}
+                            <div className="text-center w-full px-2">
+                                <h2 className="text-base sm:text-lg font-semibold truncate">
+                                    {partner?.displayName ?? partner?.username ?? 'Anonymous'}
+                                </h2>
+                                {languageInfo && (
+                                    <div className="flex flex-col items-center gap-1 mt-1.5 sm:mt-2">
+                                        <Badge variant="secondary" className={cn(glassStyles.badge, 'border text-xs sm:text-sm')}>
+                                            {languageInfo.flag} {languageInfo.name}
+                                        </Badge>
+                                        <p className="text-[11px] sm:text-xs text-muted-foreground/70">
+                                            Matched on {languageInfo.name}
+                                        </p>
+                                    </div>
+                                )}
+                                {!languageInfo && (
+                                    <p className="text-[11px] sm:text-xs text-muted-foreground/70 mt-1">
+                                        Global match
+                                    </p>
+                                )}
+                            </div>
 
-                    {/* Call duration + Your mic status */}
-                    <div className="flex items-center gap-3">
-                        <CallDurationDisplay duration={callDuration} />
-                        <VoiceActivityIndicator isSpeaking={isSpeaking} label="You" />
+                            {/* Activity indicators - responsive layout */}
+                            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 w-full px-2 mt-2 sm:mt-3">
+                                <VoiceActivityIndicator
+                                    isSpeaking={isPartnerSpeaking}
+                                    label={`${partner?.username ?? 'Partner'}`}
+                                    variant="compact"
+                                    className="flex-1 sm:flex-none w-full sm:w-auto"
+                                />
+                                <div className="w-px h-5 bg-white/10 hidden sm:block" />
+                                <div className="block sm:hidden text-muted-foreground text-xs">•</div>
+                                <VoiceActivityIndicator
+                                    isSpeaking={isSpeaking}
+                                    label="You"
+                                    variant="compact"
+                                    className="flex-1 sm:flex-none w-full sm:w-auto"
+                                />
+                            </div>
+
+                            {/* Call duration */}
+                            <div className="w-full flex items-center justify-center mt-2 sm:mt-3">
+                                <CallDurationDisplay duration={callDuration} />
+                            </div>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
@@ -680,57 +719,73 @@ export const ConnectedState = memo(function ConnectedState({
                 />
             )}
 
-            {/* Control buttons */}
-            <div className="grid grid-cols-2 gap-3 w-full max-w-md">
-                <Button
-                    onClick={onToggleAudio}
-                    variant={isAudioEnabled ? 'outline' : 'danger'}
-                    className={cn(
-                        'h-14 flex-col gap-1',
-                        isAudioEnabled && glassStyles.button,
-                        isAudioEnabled && 'border'
-                    )}
-                >
-                    {isAudioEnabled ? (
-                        <>
-                            <Mic className="h-5 w-5" />
-                            <span className="text-xs">Mute</span>
-                        </>
-                    ) : (
-                        <>
-                            <MicOff className="h-5 w-5" />
-                            <span className="text-xs">Unmute</span>
-                        </>
-                    )}
-                </Button>
+            {/* Control buttons - improved layout for all screen sizes */}
+            <div className="w-full max-w-md px-2 sm:px-0">
+                <div className="grid grid-cols-4 gap-1 sm:gap-2">
+                    {/* Mute toggle */}
+                    <Button
+                        onClick={onToggleAudio}
+                        variant={isAudioEnabled ? 'outline' : 'danger'}
+                        size="sm"
+                        className={cn(
+                            'h-10 sm:h-12 flex flex-col items-center justify-center gap-0.5 sm:gap-1',
+                            isAudioEnabled && glassStyles.button,
+                            isAudioEnabled && 'border'
+                        )}
+                        title={isAudioEnabled ? 'Mute microphone' : 'Unmute microphone'}
+                    >
+                        {isAudioEnabled ? (
+                            <Mic className="h-3 w-3 sm:h-4 sm:w-4" />
+                        ) : (
+                            <MicOff className="h-3 w-3 sm:h-4 sm:w-4" />
+                        )}
+                        <span className="text-[8px] sm:text-[10px] leading-none">
+                            {isAudioEnabled ? 'Mute' : 'Unmute'}
+                        </span>
+                    </Button>
 
-                <Button
-                    onClick={onNextPartner}
-                    variant="outline"
-                    className={cn(glassStyles.button, 'h-14 flex-col gap-1 border')}
-                >
-                    <SkipForward className="h-5 w-5" />
-                    <span className="text-xs">Next</span>
-                </Button>
+                    {/* Report */}
+                    <Button
+                        onClick={onReport}
+                        variant="outline"
+                        size="sm"
+                        className={cn(glassStyles.button, 'h-10 sm:h-12 flex flex-col items-center justify-center gap-0.5 sm:gap-1 border text-yellow-500 hover:text-yellow-400')}
+                        title="Report user"
+                    >
+                        <Flag className="h-3 w-3 sm:h-4 sm:w-4" />
+                        <span className="text-[8px] sm:text-[10px] leading-none">Report</span>
+                    </Button>
 
-                <Button
-                    onClick={onReport}
-                    variant="outline"
-                    className={cn(glassStyles.button, 'h-14 flex-col gap-1 border text-yellow-500 hover:text-yellow-400')}
-                >
-                    <Flag className="h-5 w-5" />
-                    <span className="text-xs">Report</span>
-                </Button>
+                    {/* Next partner */}
+                    <Button
+                        onClick={onNextPartner}
+                        variant="outline"
+                        size="sm"
+                        className={cn(glassStyles.button, 'h-10 sm:h-12 flex flex-col items-center justify-center gap-0.5 sm:gap-1 border')}
+                        title="Find next partner"
+                    >
+                        <SkipForward className="h-3 w-3 sm:h-4 sm:w-4" />
+                        <span className="text-[8px] sm:text-[10px] leading-none">Next</span>
+                    </Button>
 
-                <Button
-                    onClick={onEndCall}
-                    variant="danger"
-                    className="h-14 flex-col gap-1"
-                >
-                    <PhoneOff className="h-5 w-5" />
-                    <span className="text-xs">End</span>
-                </Button>
+                    {/* End call */}
+                    <Button
+                        onClick={onEndCall}
+                        variant="danger"
+                        size="sm"
+                        className="h-10 sm:h-12 flex flex-col items-center justify-center gap-0.5 sm:gap-1"
+                        title="End call"
+                    >
+                        <PhoneOff className="h-3 w-3 sm:h-4 sm:w-4" />
+                        <span className="text-[8px] sm:text-[10px] leading-none">End</span>
+                    </Button>
+                </div>
             </div>
+
+            {/* Tip text */}
+            <p className="text-xs text-muted-foreground text-center px-4">
+                💡 Try the text chat feature to send messages without audio
+            </p>
         </div>
     );
 });
@@ -857,27 +912,33 @@ interface VoiceActivityIndicatorProps {
     isSpeaking: boolean;
     label?: string;
     className?: string;
+    variant?: 'compact' | 'normal';
 }
 
 export const VoiceActivityIndicator = memo(function VoiceActivityIndicator({
     isSpeaking,
     label = 'Speaking',
     className,
+    variant = 'normal',
 }: VoiceActivityIndicatorProps) {
+    const isCompact = variant === 'compact';
+
     return (
         <div
             className={cn(
-                'flex items-center gap-2 px-2 py-1 rounded-full text-xs transition-all',
+                'flex items-center gap-2 rounded-full transition-all border',
+                isCompact ? 'px-2 py-1 text-xs' : 'px-3 py-1.5 text-sm',
                 isSpeaking
-                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                    : 'bg-muted/20 text-muted-foreground border border-muted/20',
+                    ? 'bg-gradient-to-r from-green-500/20 to-emerald-500/20 text-green-300 border-green-500/40 shadow-lg shadow-green-500/20'
+                    : 'bg-muted/15 text-muted-foreground/70 border-muted/30',
                 className
             )}
         >
             <div
                 className={cn(
-                    'w-2 h-2 rounded-full transition-colors',
-                    isSpeaking ? 'bg-green-500 animate-pulse' : 'bg-muted-foreground/50'
+                    'rounded-full transition-all',
+                    isCompact ? 'w-2 h-2' : 'w-2.5 h-2.5',
+                    isSpeaking ? 'bg-green-400 animate-pulse shadow-lg shadow-green-400/50' : 'bg-muted-foreground/40'
                 )}
             />
             {label}
@@ -1061,30 +1122,73 @@ export const EndedState = memo(function EndedState({
     onStartAgain,
     className,
 }: EndedStateProps) {
+    const [showOptions, setShowOptions] = useState(false);
+
+    useEffect(() => {
+        // Show action buttons after brief delay for smooth transition
+        const timer = setTimeout(() => setShowOptions(true), 300);
+        return () => clearTimeout(timer);
+    }, []);
+
     return (
         <div className={cn('flex flex-col items-center gap-6', className)}>
-            <div className="text-center space-y-3">
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-muted/50 mb-2">
-                    <PhoneOff className="h-10 w-10 text-muted-foreground" />
+            {/* Call ended message */}
+            <div className="text-center space-y-4 animate-in fade-in duration-500">
+                <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-green-500/20 to-green-600/10 border border-green-500/30 mb-2 animate-out scale-50 fade-out duration-300">
+                    <PhoneOff className="h-12 w-12 text-green-400 animate-pulse" />
                 </div>
-                <h2 className="text-xl font-semibold">Call Ended</h2>
-                <p className="text-muted-foreground text-sm">
-                    Thanks for using Random Call!
-                </p>
+                <div>
+                    <h2 className="text-2xl font-bold bg-gradient-to-r from-white to-white/70 bg-clip-text text-transparent">
+                        Thanks for the call!
+                    </h2>
+                    <p className="text-muted-foreground text-sm mt-2">
+                        That was a great conversation. Want to meet someone new?
+                    </p>
+                </div>
             </div>
 
-            <Button
-                onClick={onStartAgain}
-                size="lg"
-                className={cn(
-                    'w-full max-w-xs h-12',
-                    'bg-gradient-to-r from-primary-500 to-primary-600',
-                    'hover:from-primary-400 hover:to-primary-500'
-                )}
-            >
-                <PhoneCall className="h-5 w-5 mr-2" />
-                Start New Call
-            </Button>
+            {/* Quick stats */}
+            <div className="w-full max-w-md px-4 py-3 rounded-lg bg-white/5 border border-white/10 space-y-2 animate-in slide-in-from-bottom-4 duration-500 delay-100">
+                <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Call quality</span>
+                    <Badge variant="secondary" className={cn(glassStyles.badge, 'border text-green-400')}>
+                        <span className="relative flex h-2 w-2 mr-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                        </span>
+                        Excellent
+                    </Badge>
+                </div>
+            </div>
+
+            {/* Action buttons with transition */}
+            <div className={cn(
+                'w-full max-w-md space-y-3 transition-all duration-500',
+                showOptions ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'
+            )}>
+                <Button
+                    onClick={onStartAgain}
+                    size="lg"
+                    className={cn(
+                        'w-full h-14 text-base font-semibold',
+                        'bg-gradient-to-r from-primary-500 to-primary-600',
+                        'hover:from-primary-400 hover:to-primary-500',
+                        'shadow-lg shadow-primary-500/25',
+                        'transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]'
+                    )}
+                >
+                    <PhoneCall className="h-5 w-5 mr-2" />
+                    Start Another Call
+                </Button>
+
+                <Button
+                    onClick={() => window.location.href = '/'}
+                    variant="outline"
+                    className={cn(glassStyles.button, 'w-full h-12 border')}
+                >
+                    Take a Break
+                </Button>
+            </div>
         </div>
     );
 });

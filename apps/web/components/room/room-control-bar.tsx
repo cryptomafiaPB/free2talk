@@ -103,53 +103,47 @@ export const RoomControlBar = memo(function RoomControlBar({
 }: RoomControlBarProps) {
     return (
         <div className="flex items-center justify-center">
-            <div className="flex items-center gap-1 p-1.5 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 shadow-2xl">
+            <div className="flex items-center gap-1.5 px-2.5 py-2 rounded-3xl bg-gradient-to-r from-black/50 to-black/30 backdrop-blur-xl border border-white/10 shadow-2xl hover:shadow-3xl transition-shadow">
                 {/* Microphone Toggle */}
                 <ControlButton
                     onClick={onMuteToggle}
                     disabled={isDisconnected}
                     active={isMuted}
-                    activeColor="bg-blue-600 hover:bg-blue-700"
-                    tooltip={isMuted ? 'Unmute' : 'Mute'}
+                    activeColor="bg-red-600/20 ring-1 ring-red-500"
+                    tooltip={isMuted ? 'Unmute microphone' : 'Mute microphone'}
                 >
                     {isMuted ? (
-                        <MicOff className="h-5 w-5" />
+                        <MicOff className="h-4 w-4 text-red-500" />
                     ) : (
-                        <Mic className="h-5 w-5" />
+                        <Mic className="h-4 w-4 text-green-500" />
                     )}
                 </ControlButton>
 
-                {/* Screen Share Toggle (placeholder for future) */}
-                <ControlButton
-                    onClick={onScreenShareToggle}
-                    disabled={isDisconnected || !onScreenShareToggle}
-                    active={isScreenSharing}
-                    activeColor="bg-blue-600 hover:bg-blue-700"
-                    tooltip={isScreenSharing ? 'Stop Sharing' : 'Share Screen'}
-                >
-                    {isScreenSharing ? (
-                        <Monitor className="h-5 w-5" />
-                    ) : (
-                        <MonitorOff className="h-5 w-5" />
-                    )}
-                </ControlButton>
+                {/* Divider */}
+                <div className="w-px h-5 bg-white/10" />
 
-                {/* Connection Quality Indicator */}
-                <div className="px-3 py-2 flex items-center justify-center">
+                {/* Connection Quality Indicator - with label */}
+                <div className="flex items-center gap-1.5 px-1.5 hidden sm:flex">
                     <SignalBars quality={isDisconnected ? 'disconnected' : connectionQuality} />
+                    <span className="text-xs text-white/70 whitespace-nowrap">
+                        {isDisconnected ? 'Offline' : connectionQuality}
+                    </span>
                 </div>
 
-                {/* Leave Call Button */}
+                {/* Divider */}
+                <div className="w-px h-5 bg-white/10 hidden sm:block" />
+
+                {/* Leave Call Button - Prominent */}
                 <ControlButton
                     onClick={onLeave}
                     disabled={isLeaving}
                     variant="danger"
-                    tooltip="Leave Room"
+                    tooltip="Leave room"
                 >
                     {isLeaving ? (
-                        <Loader2 className="h-5 w-5 animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                        <Phone className="h-5 w-5 rotate-[135deg]" />
+                        <Phone className="h-4 w-4 rotate-[135deg]" />
                     )}
                 </ControlButton>
             </div>
@@ -168,24 +162,24 @@ interface ControlButtonProps {
 }
 
 /**
- * Individual control button
+ * Individual control button with enhanced styling
  */
 const ControlButton = memo(function ControlButton({
     children,
     onClick,
     disabled = false,
     active = false,
-    activeColor = 'bg-blue-600 hover:bg-blue-700',
+    activeColor = 'bg-blue-600/20 ring-1 ring-blue-500',
     variant = 'default',
     tooltip,
 }: ControlButtonProps) {
-    const baseClasses = 'relative flex items-center justify-center w-11 h-11 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed';
+    const baseClasses = 'relative flex items-center justify-center w-9 h-9 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95';
 
     const variantClasses = {
         default: active
             ? `${activeColor} text-white`
-            : 'bg-white/10 hover:bg-white/20 text-white',
-        danger: 'bg-red-600 hover:bg-red-700 text-white',
+            : 'bg-white/5 hover:bg-white/10 text-white/80 hover:text-white',
+        danger: 'bg-red-600/80 hover:bg-red-600 text-white ring-1 ring-red-400/50 hover:ring-red-400',
     };
 
     return (
@@ -194,6 +188,7 @@ const ControlButton = memo(function ControlButton({
             disabled={disabled}
             className={cn(baseClasses, variantClasses[variant])}
             title={tooltip}
+            aria-label={tooltip}
         >
             {children}
         </button>

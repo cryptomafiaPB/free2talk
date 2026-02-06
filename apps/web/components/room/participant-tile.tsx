@@ -90,6 +90,9 @@ export const ParticipantTile = memo(function ParticipantTile({
     // Show owner controls only if current viewer is owner and this is not the owner
     const showOwnerControls = isViewerOwner && !isParticipantOwner && !isCurrentUser;
 
+    // Show participant options (mute/kick) - can be shown by owner for any participant except self
+    const showParticipantOptions = isViewerOwner && !isCurrentUser;
+
     return (
         <Card
             variant="interactive"
@@ -114,23 +117,34 @@ export const ParticipantTile = memo(function ParticipantTile({
                 </span>
             )}
 
-            {/* Owner Controls Menu */}
-            {showOwnerControls && (
-                <div className="absolute top-2 right-2">
-                    <DropdownMenu>
+            {/* Owner Controls Menu - Fixed visibility bug with modal and event handling */}
+            {showParticipantOptions && (
+                <div className="absolute top-2 right-2 z-50" onClick={(e) => e.stopPropagation()}>
+                    <DropdownMenu modal={true}>
                         <DropdownMenuTrigger asChild>
-                            <button className="p-1 rounded-full hover:bg-surface-hover transition-colors">
+                            <button
+                                className="p-1 rounded-full hover:bg-surface-hover active:scale-95 transition-all"
+                                aria-label="Participant options"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    e.preventDefault();
+                                }}
+                            >
                                 <MoreVertical className="h-4 w-4 text-text-secondary" />
                             </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                                onClick={() => onTransferOwnership?.(participant.id)}
-                            >
-                                <Crown className="mr-2 h-4 w-4" />
-                                Make Owner
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
+                        <DropdownMenuContent align="end" className="w-48 z-[100]" onClick={(e) => e.stopPropagation()}>
+                            {!isParticipantOwner && (
+                                <>
+                                    <DropdownMenuItem
+                                        onClick={() => onTransferOwnership?.(participant.id)}
+                                    >
+                                        <Crown className="mr-2 h-4 w-4" />
+                                        Make Owner
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                </>
+                            )}
                             <DropdownMenuItem
                                 onClick={() => onKick?.(participant.id)}
                                 className="text-danger-500 focus:text-danger-500"

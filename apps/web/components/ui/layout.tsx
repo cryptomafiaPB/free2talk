@@ -4,6 +4,7 @@ import { cn } from '@/lib/design-system';
 import { MobileNav, FloatingActionButton } from './mobile-nav';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
+import { useEffect, useState } from 'react';
 
 interface MainLayoutProps {
     children: React.ReactNode;
@@ -22,6 +23,27 @@ export function MainLayout({
     showFAB = true,
     headerTitle,
 }: MainLayoutProps) {
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
+    useEffect(() => {
+        // Initialize from localStorage
+        const saved = localStorage.getItem('sidebar-collapsed');
+        if (saved !== null) {
+            setIsSidebarCollapsed(saved === 'true');
+        }
+
+        // Listen for sidebar toggle events
+        const handleSidebarToggle = (e: CustomEvent<{ collapsed: boolean }>) => {
+            setIsSidebarCollapsed(e.detail.collapsed);
+        };
+
+        window.addEventListener('sidebar-toggle', handleSidebarToggle as EventListener);
+
+        return () => {
+            window.removeEventListener('sidebar-toggle', handleSidebarToggle as EventListener);
+        };
+    }, []);
+
     return (
         <div className="min-h-screen bg-background">
             {/* Sidebar - Desktop only */}
@@ -29,8 +51,8 @@ export function MainLayout({
 
             {/* Main Content Area */}
             <div className={cn(
-                'flex flex-col min-h-screen',
-                showSidebar && 'md:ml-64'
+                'flex flex-col min-h-screen transition-all duration-300 ease-in-out',
+                showSidebar && (isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64')
             )}>
                 {/* Header */}
                 {showHeader && <Header title={headerTitle} />}

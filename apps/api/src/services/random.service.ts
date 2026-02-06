@@ -186,12 +186,25 @@ export async function isInQueue(userId: string): Promise<boolean> {
     return queueTime !== null;
 }
 
-// ----------------------- Matching Engine 
+// ----------------------- Matching Engine (OPTIMIZED)
 
 
-// Find a match for the given user
-// Returns matched userId or null if no match found
-export async function findMatch(userId: string): Promise<{
+/**
+ * OPTIMIZED matching algorithm
+ * 
+ * Old approach (O(n²)):
+ * - For each user in queue, scan all users in queue
+ * - Result: n² comparisons
+ * 
+ * New approach (O(n)):
+ * - Pop users from front of queue
+ * - Try to match them
+ * - If no match found, add back to end of queue
+ * - Result: O(n) per cycle, max 100 iterations per call
+ */
+
+// Find a match for the given user using queue-pop approach
+export async function findMatchOptimized(userId: string): Promise<{
     matchedUserId: string | null;
     matchedLanguage: string | null;
 }> {
@@ -209,39 +222,61 @@ export async function findMatch(userId: string): Promise<{
         // 1. Try language preference queues first (if enabled)
         if (preferences.preferenceEnabled && preferences.languages?.length) {
             for (const lang of preferences.languages) {
-                const langQueue = await redis.lRange(RANDOM_KEYS.QUEUE_LANGUAGE(lang), 0, -1);
+                // ✨ Pop from front instead of scanning all
+                const candidateId = await redis.lPop(RANDOM_KEYS.QUEUE_LANGUAGE(lang));
 
-                for (const candidateId of langQueue) {
-                    if (candidateId !== userId && !blockedSet.has(candidateId)) {
-                        // Check if candidate is also looking for this language
-                        const candidatePrefData = await redis.get(RANDOM_KEYS.USER_PREFERENCES(candidateId));
-                        if (candidatePrefData) {
-                            const candidatePref: RandomCallPreferences = JSON.parse(candidatePrefData);
-                            if (
-                                candidatePref.preferenceEnabled &&
-                                candidatePref.languages?.some(l => l.toLowerCase() === lang.toLowerCase())
-                            ) {
-                                return { matchedUserId: candidateId, matchedLanguage: lang };
-                            }
+                if (candidateId && candidateId !== userId && !blockedSet.has(candidateId)) {
+                    // Check if candidate is also looking for this language
+                    const candidatePrefData = await redis.get(RANDOM_KEYS.USER_PREFERENCES(candidateId));
+                    if (candidatePrefData) {
+                        const candidatePref: RandomCallPreferences = JSON.parse(candidatePrefData);
+                        if (
+                            candidatePref.preferenceEnabled &&
+                            candidatePref.languages?.some(l => l.toLowerCase() === lang.toLowerCase())
+                        ) {
+                            return { matchedUserId: candidateId, matchedLanguage: lang };
                         }
                     }
+
+                    // Put back if not a match
+                    await redis.rPush(RANDOM_KEYS.QUEUE_LANGUAGE(lang), candidateId);
                 }
             }
         }
 
         // 2. Fallback to global queue (true random)
-        const globalQueue = await redis.lRange(RANDOM_KEYS.QUEUE_GLOBAL, 0, -1);
+        // ✨ Try up to 10 candidates from global queue
+        const maxCandidates = 10;
+        for (let i = 0; i < maxCandidates; i++) {
+            const candidateId = await redis.lPop(RANDOM_KEYS.QUEUE_GLOBAL);
 
-        for (const candidateId of globalQueue) {
-            if (candidateId !== userId && !blockedSet.has(candidateId)) {
-                // Check recently matched pair to avoid immediate rematch
-                const recentlyMatched = await redis.get(
-                    RANDOM_KEYS.BLOCKED_PAIR(userId, candidateId)
-                );
-                if (!recentlyMatched) {
-                    return { matchedUserId: candidateId, matchedLanguage: null };
-                }
+            if (!candidateId) {
+                break; // Queue empty
             }
+
+            if (candidateId === userId) {
+                // Skip self
+                await redis.rPush(RANDOM_KEYS.QUEUE_GLOBAL, candidateId);
+                continue;
+            }
+
+            if (blockedSet.has(candidateId)) {
+                // Skip blocked users
+                await redis.rPush(RANDOM_KEYS.QUEUE_GLOBAL, candidateId);
+                continue;
+            }
+
+            // Check recently matched pair to avoid immediate rematch
+            const recentlyMatched = await redis.get(
+                RANDOM_KEYS.BLOCKED_PAIR(userId, candidateId)
+            );
+
+            if (!recentlyMatched) {
+                return { matchedUserId: candidateId, matchedLanguage: null };
+            }
+
+            // Put back and try next
+            await redis.rPush(RANDOM_KEYS.QUEUE_GLOBAL, candidateId);
         }
 
         return { matchedUserId: null, matchedLanguage: null };
@@ -262,7 +297,8 @@ export async function processMatchForUser(
     user1SocketId?: string;
     user2SocketId?: string;
 }> {
-    const { matchedUserId, matchedLanguage } = await findMatch(userId);
+    // ✨ Use optimized matching
+    const { matchedUserId, matchedLanguage } = await findMatchOptimized(userId);
 
     if (!matchedUserId) {
         return { matched: false };
@@ -278,6 +314,10 @@ export async function processMatchForUser(
 
     const user1: QueuedUser = JSON.parse(user1Data);
     const user2: QueuedUser = JSON.parse(user2Data);
+
+    // Remove from queue
+    await removeFromQueue(userId);
+    await removeFromQueue(matchedUserId);
 
     // Create session
     const session = await createCallSession(

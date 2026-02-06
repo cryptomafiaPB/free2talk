@@ -59,9 +59,18 @@ export const RoomHeader = memo(function RoomHeader({
         }
     }, [onCloseRoom]);
 
+    const statusIcon = {
+        'connected': '🟢',
+        'connecting': '🟡',
+        'reconnecting': '🟡',
+        'disconnected': '🔴',
+    }[connectionStatus];
+
     return (
         <header className={cn(
-            'flex items-center justify-between px-4 py-3 border-b border-surface-border bg-background-secondary/50 backdrop-blur-xl',
+            'flex items-center justify-between px-4 py-3 border-b',
+            'border-surface-border bg-gradient-to-r from-background-secondary/80 to-background-secondary/50',
+            'backdrop-blur-xl',
             className
         )}>
             <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -70,6 +79,7 @@ export const RoomHeader = memo(function RoomHeader({
                     href="/"
                     className="p-2 -ml-2 rounded-lg hover:bg-surface-hover text-text-secondary transition-colors flex-shrink-0"
                     aria-label="Back to rooms"
+                    title="Back"
                 >
                     <ChevronLeft className="h-5 w-5" />
                 </Link>
@@ -77,18 +87,21 @@ export const RoomHeader = memo(function RoomHeader({
                 {/* Room Info */}
                 <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                        <h1 className="font-semibold text-text-primary truncate">
+                        <h1 className="font-semibold text-text-primary truncate text-base sm:text-lg">
                             {room.name}
                         </h1>
-                        <ConnectionIndicator status={connectionStatus} />
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <span className="text-lg" title={connectionStatus}>{statusIcon}</span>
+                            <ConnectionIndicator status={connectionStatus} />
+                        </div>
                     </div>
-                    <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        {room.languages.slice(0, 3).map((lang) => (
+                    <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                        {room.languages.slice(0, 2).map((lang) => (
                             <LanguageBadge key={lang} language={lang} size="sm" />
                         ))}
-                        {room.languages.length > 3 && (
+                        {room.languages.length > 2 && (
                             <span className="text-xs text-text-tertiary">
-                                +{room.languages.length - 3}
+                                +{room.languages.length - 2} more
                             </span>
                         )}
                     </div>
@@ -96,27 +109,36 @@ export const RoomHeader = memo(function RoomHeader({
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-1 flex-shrink-0">
+            <div className="flex items-center gap-1 flex-shrink-0 ml-2">
                 {/* Participant Count */}
-                <Button variant="ghost" size="iconSm" className="pointer-events-none">
+                <Button
+                    variant="ghost"
+                    size="iconSm"
+                    className="pointer-events-none"
+                    title={`${participantCount} participant${participantCount !== 1 ? 's' : ''}`}
+                >
                     <Users className="h-4 w-4" />
-                    <span className="text-xs ml-1 tabular-nums">
+                    <span className="text-xs ml-1 tabular-nums font-medium">
                         {participantCount}/{room.maxParticipants}
                     </span>
                 </Button>
 
-                {/* More Options */}
+                {/* More Options Menu */}
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="iconSm">
+                        <Button
+                            variant="ghost"
+                            size="iconSm"
+                            title="Room options"
+                        >
                             <MoreVertical className="h-4 w-4" />
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
+                    <DropdownMenuContent align="end" className="w-56">
                         <DropdownMenuItem asChild>
-                            <Link href="/" className="flex items-center">
+                            <Link href="/" className="flex items-center cursor-pointer">
                                 <LogOut className="mr-2 h-4 w-4" />
-                                Leave Room
+                                <span>Leave Room</span>
                             </Link>
                         </DropdownMenuItem>
 
@@ -125,10 +147,10 @@ export const RoomHeader = memo(function RoomHeader({
                                 <DropdownMenuSeparator />
                                 <DropdownMenuItem
                                     onClick={handleCloseRoom}
-                                    className="text-danger-500 focus:text-danger-500"
+                                    className="text-danger-500 focus:text-danger-500 cursor-pointer"
                                 >
                                     <Trash2 className="mr-2 h-4 w-4" />
-                                    Close Room
+                                    <span>Close Room</span>
                                 </DropdownMenuItem>
                             </>
                         )}

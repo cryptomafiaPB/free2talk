@@ -5,6 +5,7 @@ import { cn } from '@/lib/design-system';
 import { Button } from './button';
 import { Bell, Plus } from './icons';
 import { UserMenu } from '@/components/auth';
+import Image from 'next/image';
 
 interface HeaderProps {
     title?: string;
@@ -18,8 +19,16 @@ export function Header({ title = 'Voice Rooms', showCreateButton = true }: Heade
                 {/* Logo - Mobile only */}
                 <div className="flex items-center gap-3 md:hidden">
                     <Link href="/" className="flex items-center gap-2">
-                        <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center">
-                            <span className="text-white font-bold text-sm">F2T</span>
+                        {/* <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-600 flex items-center justify-center"> */}
+                        <div>
+                            {/* <span className="text-white font-bold text-sm">F2T</span> */}
+                            <Image
+                                src="/white-logo.png"
+                                alt="Free2Talk Logo"
+                                width={74}
+                                height={74}
+                            // className="h-6 w-6"
+                            />
                         </div>
                     </Link>
                 </div>

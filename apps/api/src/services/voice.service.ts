@@ -12,6 +12,7 @@ import type {
 import { getNextWorker } from '../socket/mediasoup/workers.js';
 import { AppError } from '../utils/app-error.js';
 import { config } from '../config/env.js';
+import * as RoomPersistence from './room-persistence.service.js';
 
 // mediasoup configuration
 const mediaCodecs: mediasoup.types.RtpCodecCapability[] = [
@@ -58,6 +59,7 @@ interface RoomState {
     router: Router;
     audioLevelObserver: AudioLevelObserver;
     participants: Map<string, ParticipantState>;
+    producerToUserId: Map<string, string>; // ✨ NEW: O(1) lookup for speaking detection
 }
 
 interface ParticipantState {
@@ -70,6 +72,10 @@ interface ParticipantState {
 
 // Room storage
 const rooms = new Map<string, RoomState>();
+
+// Persistence timing configuration
+const PERSISTENCE_INTERVAL = 30000; // Persist every 30 seconds
+let persistenceInterval: NodeJS.Timeout | null = null;
 
 
 //  Create or get a router for a room
@@ -92,9 +98,14 @@ export async function getOrCreateRouter(roomId: string): Promise<Router> {
             router,
             audioLevelObserver,
             participants: new Map(),
+            producerToUserId: new Map(), // ✨ Initialize producer index
         };
 
         rooms.set(roomId, room);
+
+        // ✨ Persist room creation
+        await RoomPersistence.persistRoomMetadata(roomId, 0);
+
         console.log(`Created router for room ${roomId}`);
     }
 
@@ -262,6 +273,9 @@ export async function produce(
 
     participant.producer = producer;
 
+    // ✨ Index producer for O(1) speaking detection lookup
+    room.producerToUserId.set(producer.id, userId);
+
     // Add producer to AudioLevelObserver for speaking detection
     if (kind === 'audio') {
         console.log(`[Produce] Adding producer to AudioLevelObserver`);
@@ -275,6 +289,19 @@ export async function produce(
     });
 
     console.log(`[Produce] Producer ready to send audio: ${producer.id} for user ${userId}`);
+
+    // ✨ Persist participant state after producer creation
+    await RoomPersistence.persistParticipantState(roomId, userId, {
+        producerId: producer.id,
+        consumerIds: Array.from(participant.consumers.keys()),
+        transportIds: {
+            send: participant.sendTransport?.id ?? null,
+            recv: participant.recvTransport?.id ?? null,
+        },
+    });
+
+    // ✨ Update room activity
+    await RoomPersistence.updateRoomActivity(roomId);
 
     return producer.id;
 }
@@ -441,6 +468,11 @@ export function getAudioLevelObserver(roomId: string): AudioLevelObserver | unde
     return rooms.get(roomId)?.audioLevelObserver;
 }
 
+// ✨ NEW: Get producer-to-user ID mapping for fast lookup
+export function getProducerToUserIdMap(roomId: string): Map<string, string> | undefined {
+    return rooms.get(roomId)?.producerToUserId;
+}
+
 //  Clean up participant resources
 
 export async function cleanupParticipant(roomId: string, userId: string): Promise<void> {
@@ -460,8 +492,10 @@ export async function cleanupParticipant(roomId: string, userId: string): Promis
     }
     participant.consumers.clear();
 
-    // Close producer
+    // Close producer and remove from index
     if (participant.producer) {
+        // ✨ Remove from producer index
+        room.producerToUserId.delete(participant.producer.id);
         participant.producer.close();
         participant.producer = null;
     }
@@ -482,9 +516,11 @@ export async function cleanupParticipant(roomId: string, userId: string): Promis
 
     console.log(`Cleaned up participant ${userId} from room ${roomId}`);
 
-    // Clean up room if empty
+    // ✨ Update persistence after cleanup
     if (room.participants.size === 0) {
         await cleanupRoom(roomId);
+    } else {
+        await RoomPersistence.persistRoomMetadata(roomId, room.participants.size);
     }
 }
 
@@ -508,6 +544,9 @@ export async function cleanupRoom(roomId: string): Promise<void> {
     // Remove room
     rooms.delete(roomId);
 
+    // ✨ Delete from persistence
+    await RoomPersistence.deleteRoomState(roomId);
+
     console.log(`Cleaned up room ${roomId}`);
 }
 
@@ -516,6 +555,63 @@ export async function cleanupRoom(roomId: string): Promise<void> {
 
 export function getActiveRooms(): string[] {
     return Array.from(rooms.keys());
+}
+
+// ✨ NEW: Start periodic persistence interval
+export function startPersistenceInterval(): void {
+    if (persistenceInterval) {
+        return; // Already running
+    }
+
+    persistenceInterval = setInterval(async () => {
+        try {
+            for (const [roomId, room] of rooms) {
+                await RoomPersistence.persistRoomMetadata(roomId, room.participants.size);
+
+                // Also persist each participant
+                for (const [userId, participant] of room.participants) {
+                    await RoomPersistence.persistParticipantState(roomId, userId, {
+                        producerId: participant.producer?.id ?? null,
+                        consumerIds: Array.from(participant.consumers.keys()),
+                        transportIds: {
+                            send: participant.sendTransport?.id ?? null,
+                            recv: participant.recvTransport?.id ?? null,
+                        },
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('[VoiceService] Persistence interval error:', error);
+        }
+    }, PERSISTENCE_INTERVAL);
+
+    console.log('[VoiceService] Started persistence interval');
+}
+
+// ✨ NEW: Stop persistence interval
+export function stopPersistenceInterval(): void {
+    if (persistenceInterval) {
+        clearInterval(persistenceInterval);
+        persistenceInterval = null;
+        console.log('[VoiceService] Stopped persistence interval');
+    }
+}
+
+// ✨ NEW: Cleanup and recovery helper
+export async function recoverFromPersistence(roomId: string): Promise<void> {
+    try {
+        const metadata = await RoomPersistence.loadRoomMetadata(roomId);
+        if (metadata) {
+            console.log(
+                `[VoiceService] Recovered room ${roomId} with ${metadata.participantCount} participants from persistence`
+            );
+        }
+    } catch (error) {
+        console.error(
+            `[VoiceService] Failed to recover room ${roomId} from persistence:`,
+            error
+        );
+    }
 }
 
 

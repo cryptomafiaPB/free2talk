@@ -58,7 +58,7 @@ export interface EnhancedVoiceRoomProps {
 }
 
 /**
- * Main voice room component with industry-standard participant sync
+ * Main voice room component
  */
 export const EnhancedVoiceRoom = memo(function EnhancedVoiceRoom({
     room: initialRoom,
@@ -385,9 +385,9 @@ export const EnhancedVoiceRoom = memo(function EnhancedVoiceRoom({
     );
 });
 
-// ============================================================================
+// 
 // SUB-COMPONENTS
-// ============================================================================
+// 
 
 const RoomHeader = memo(function RoomHeader({
     room,
