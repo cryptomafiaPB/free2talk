@@ -31,16 +31,24 @@ jobs:
           pnpm install
           pnpm build:api
           
-      - name: Upload artifact entire repo
+      # Create a self-contained runtime folder for the API
+      - name: Prepare API runtime folder
+        run: |
+          mkdir -p output/api-runtime
+          # copy built API
+          cp -R apps/api/dist output/api-runtime/dist
+          # copy API package.json (so npm knows how to run it)
+          cp apps/api/package.json output/api-runtime/package.json
+          # install production deps for the API only
+          cd output/api-runtime
+          npm install --only=production
+
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: |
-            .
-            !.git/
-            !.github/
-            !**/.git
-            !**/.github
+          path: output/api-runtime
+      
 
   deploy:
     runs-on: ubuntu-latest
