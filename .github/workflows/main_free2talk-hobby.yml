@@ -22,6 +22,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '22.x'
+          cache: 'pnpm'
           
       - name: Install pnpm
         run: npm install -g pnpm@9.15
@@ -31,11 +32,16 @@ jobs:
           pnpm install
           pnpm build:api
           
-      - name: Upload artifact from /apps/api only
+      - name: Upload artifact entire repo
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: apps/api/
+          path: |
+            .
+            !.git/
+            !.github/
+            !**/.git
+            !**/.github
 
   deploy:
     runs-on: ubuntu-latest
