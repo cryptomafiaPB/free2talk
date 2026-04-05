@@ -22,18 +22,22 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '22.x'
-
-      - name: npm install, build, and test
+          
+      - name: Install pnpm
+        run: npm install -g pnpm@9.15
+      
+      - name: Install and build backend (apps/api)
+        working-directory: apps/api
         run: |
-          npm install
-          npm run build --if-present
-          npm run test --if-present
+          pnpm install
+          pnpm run build --filter ./apps/api
+          pnpm run test --if-present
 
-      - name: Upload artifact for deployment job
+      - name: Upload artifact from /apps/api only
         uses: actions/upload-artifact@v4
         with:
           name: node-app
-          path: .
+          path: apps/api/
 
   deploy:
     runs-on: ubuntu-latest
