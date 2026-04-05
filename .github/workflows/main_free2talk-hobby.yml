@@ -27,10 +27,9 @@ jobs:
         run: npm install -g pnpm@9.15
       
       - name: Install and build backend (apps/api)
-        working-directory: apps/api
         run: |
           pnpm install
-          pnpm run build
+          pnpm build:api
           
       - name: Upload artifact from /apps/api only
         uses: actions/upload-artifact@v4
