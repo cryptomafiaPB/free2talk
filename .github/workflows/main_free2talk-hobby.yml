@@ -30,7 +30,7 @@ jobs:
         working-directory: apps/api
         run: |
           pnpm install
-          pnpm run build --filter ./apps/api
+          pnpm run build
           pnpm run test --if-present
 
       - name: Upload artifact from /apps/api only
